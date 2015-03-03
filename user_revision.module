@@ -1,0 +1,17 @@
+<?php
+
+/**
+ * @file
+ * User Revision module.
+ */
+use Drupal\Core\Routing\RouteMatchInterface;
+
+/**
+ * Implements hook_help().
+ */
+function user_revision_help($route_name, RouteMatchInterface $route_match) {
+  switch ($route_name) {
+    case 'help.page.user_revision':
+      return 'User revision module.';
+  }
+}

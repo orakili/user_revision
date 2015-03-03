@@ -1,0 +1,8 @@
+name: 'User revision'
+type: module
+description: 'Adds revision support for users.'
+version: VERSION
+core: 8.x
+package: User
+dependencies:
+  - user
