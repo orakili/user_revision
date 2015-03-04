@@ -67,13 +67,32 @@ function user_revision_entity_base_field_info(EntityTypeInterface $entity_type) 
 }
 
 /**
+ * Implements hook_entity_base_field_info_alter().
+ */
+function user_revision_entity_base_field_info_alter(&$fields, EntityTypeInterface $entity_type) {
+  if ($entity_type->id() == 'user') {
+    $fields['name']->setRevisionable(TRUE);
+    $fields['pass']->setRevisionable(TRUE);
+    $fields['mail']->setRevisionable(TRUE);
+    $fields['signature']->setRevisionable(TRUE);
+    $fields['signature_format']->setRevisionable(TRUE);
+    $fields['timezone']->setRevisionable(TRUE);
+    $fields['status']->setRevisionable(TRUE);
+    $fields['created']->setRevisionable(TRUE);
+    $fields['changed']->setRevisionable(TRUE);
+  }
+}
+
+/**
  * Implements hook_install().
  */
 function user_revision_install() {
   \Drupal::entityManager()->getStorage('user')->install();
   // Fill revision tables
   foreach (UserEntity::loadMultiple() as $user) {
-    $user->save();
+    if ($user->id() > 0) {
+      $user->save();
+    }
   }
 }
 

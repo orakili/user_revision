@@ -104,7 +104,7 @@ class UserStorage extends BaseUserStorage {
     }
 
     $query = db_select($this->entityType->getDataTable(), 'u')
-      ->fields('u', array('uid', 'vid', 'langcode', 'default_langcode'));
+      ->fields('u', array('uid', 'vid', 'langcode', 'default_langcode', 'name', 'pass', 'mail', 'signature', 'signature_format', 'timezone', 'status', 'created', 'changed'));
     $result = $query->execute();
     foreach ($result as $record) {
       db_insert($this->entityType->getRevisionDataTable())
