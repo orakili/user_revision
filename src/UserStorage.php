@@ -82,6 +82,13 @@ class UserStorage extends BaseUserStorage {
    */
   public function install() {
     $this->getStorageSchema()->install();
+    db_update($this->entityType->getBaseTable())
+      ->expression('vid', 'uid')
+      ->execute();
+    db_update($this->entityType->getDataTable())
+      ->expression('vid', 'uid')
+      ->execute();
+    $this->getStorageSchema()->postinstall();
   }
 
   /**

@@ -47,17 +47,6 @@ class UserStorageSchema extends BaseUserStorageSchema implements UserStorageSche
   }
 
   /**
-   * {@inheritdoc}
-   */
-  protected function getEntitySchema(ContentEntityTypeInterface $entity_type, $reset = FALSE) {
-    $schema = parent::getEntitySchema($entity_type, $reset);
-
-    $schema['users_field_data']['fields']['vid']['initial'] = '1';
-
-    return $schema;
-  }
-
-  /**
    * Install user revision storage schema.
    */
   public function install() {
@@ -69,11 +58,29 @@ class UserStorageSchema extends BaseUserStorageSchema implements UserStorageSche
         $this->installExistsTable($table_name, $table_schema);
       }
       else {
-        $installed_tables[] = $table_name;
         $schema_handler->createTable($table_name, $table_schema);
+        $installed_tables[] = $table_name;
       }
     }
     $this->keyValue()->set('installed_tables', $installed_tables);
+  }
+
+  /**
+   * Install user revision storage schema (post install).
+   * 
+   * Update not null fileds.
+   */
+  public function postinstall() {
+    $schema_handler = $this->database->schema();
+    $schema = $this->getEntitySchema($this->entityType, TRUE);
+    foreach ($this->keyValue()->get('installed_fields', array()) as $table_name => $fields) {
+      foreach ($fields as $field_name) {
+        $field_schema = $schema[$table_name]['fields'][$field_name];
+        if ($field_schema['not null']) {
+          $schema_handler->changeField($table_name, $field_name, $field_name, $field_schema);
+        }
+      }
+    }
   }
 
   /**
@@ -88,8 +95,9 @@ class UserStorageSchema extends BaseUserStorageSchema implements UserStorageSche
 
     foreach ($table_schema['fields'] as $field_name => $field_schema) {
       if (!$schema_handler->fieldExists($table_name, $field_name)) {
-        $installed_fields[$table_name][] = $field_name;
+        $field_schema['not null'] = false;
         $schema_handler->addField($table_name, $field_name, $field_schema);
+        $installed_fields[$table_name][] = $field_name;
       }
     }
 
@@ -111,8 +119,8 @@ class UserStorageSchema extends BaseUserStorageSchema implements UserStorageSche
 
     foreach ($table_schema['indexes'] as $index_name => $fields) {
       if (!$schema_handler->indexExists($table_name, $index_name)) {
-        $installed_indexes[$table_name][] = $index_name;
         $schema_handler->addIndex($table_name, $index_name, $fields);
+        $installed_indexes[$table_name][] = $index_name;
       }
     }
 
