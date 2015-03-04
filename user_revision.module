@@ -4,14 +4,49 @@
  * @file
  * User Revision module.
  */
-use Drupal\Core\Routing\RouteMatchInterface;
+use Drupal\Core\Entity\EntityTypeInterface;
+use Drupal\Core\Field\BaseFieldDefinition;
 
 /**
- * Implements hook_help().
+ * Implements hook_entity_type_alter().
  */
-function user_revision_help($route_name, RouteMatchInterface $route_match) {
-  switch ($route_name) {
-    case 'help.page.user_revision':
-      return 'User revision module.';
+function user_revision_entity_type_alter(array &$entity_types) {
+  /* @var $user \Drupal\Core\Entity\ContentEntityType */
+  $user = $entity_types['user'];
+  $user->setStorageClass('Drupal\user_revision\UserStorage');
+  $user->setHandlerClass('storage_schema', 'Drupal\user_revision\UserStorageSchema');
+  $user->set('revision_table', 'users_revision');
+  $user->set('revision_data_table', 'users_field_revision');
+  $entity_keys = $user->getKeys();
+  $entity_keys['revision'] = 'vid';
+  $user->set('entity_keys', $entity_keys);
+}
+
+/**
+ * Implements hook_entity_base_field_info() fore user entity.
+ */
+function user_revision_entity_base_field_info(EntityTypeInterface $entity_type) {
+  if ($entity_type->id() == 'user') {
+    $fields = array();
+    $fields['vid'] = BaseFieldDefinition::create('integer')
+      ->setLabel(t('Revision ID'))
+      ->setDescription(t('The user revision ID.'))
+      ->setReadOnly(TRUE)
+      ->setSetting('unsigned', TRUE);
+    return $fields;
   }
+}
+
+/**
+ * Implements hook_install().
+ */
+function user_revision_install() {
+  \Drupal::entityManager()->getStorage('user')->install();
+}
+
+/**
+ * Implements hook_uninstall().
+ */
+function user_revision_uninstall() {
+  \Drupal::entityManager()->getStorage('user')->uninstall();
 }
