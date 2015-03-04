@@ -186,7 +186,7 @@ class UserStorageSchema extends BaseUserStorageSchema implements UserStorageSche
     $base_filed_definitions = $this->entityManager->getBaseFieldDefinitions($this->storage->getEntityTypeId());
     $filed_storage_definitions = $this->entityManager->getFieldStorageDefinitions($this->storage->getEntityTypeId());
     foreach ($filed_storage_definitions as $field_name => $storage_definition) {
-      if (array_key_exists($field_name, $base_filed_definitions)) {
+      if ($field_name != 'roles' && array_key_exists($field_name, $base_filed_definitions)) {
         continue;
       }
       $revision_table_name = $this->storage->getTableMapping()->getDedicatedRevisionTableName($storage_definition);

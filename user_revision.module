@@ -6,6 +6,7 @@
  */
 use Drupal\Core\Entity\EntityTypeInterface;
 use Drupal\Core\Field\BaseFieldDefinition;
+use Drupal\user\Entity\User as UserEntity;
 
 /**
  * Implements hook_entity_type_alter().
@@ -70,6 +71,10 @@ function user_revision_entity_base_field_info(EntityTypeInterface $entity_type) 
  */
 function user_revision_install() {
   \Drupal::entityManager()->getStorage('user')->install();
+  // Fill revision tables
+  foreach (UserEntity::loadMultiple() as $user) {
+    $user->save();
+  }
 }
 
 /**
