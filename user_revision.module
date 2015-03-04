@@ -28,11 +28,39 @@ function user_revision_entity_type_alter(array &$entity_types) {
 function user_revision_entity_base_field_info(EntityTypeInterface $entity_type) {
   if ($entity_type->id() == 'user') {
     $fields = array();
+
     $fields['vid'] = BaseFieldDefinition::create('integer')
       ->setLabel(t('Revision ID'))
       ->setDescription(t('The user revision ID.'))
       ->setReadOnly(TRUE)
       ->setSetting('unsigned', TRUE);
+
+    $fields['revision_timestamp'] = BaseFieldDefinition::create('created')
+      ->setLabel(t('Revision timestamp'))
+      ->setDescription(t('The time that the current revision was created.'))
+      ->setQueryable(FALSE)
+      ->setRevisionable(TRUE);
+
+    $fields['revision_uid'] = BaseFieldDefinition::create('entity_reference')
+      ->setLabel(t('Revision user ID'))
+      ->setDescription(t('The user ID of the author of the current revision.'))
+      ->setSetting('target_type', 'user')
+      ->setQueryable(FALSE)
+      ->setRevisionable(TRUE);
+
+    $fields['revision_log'] = BaseFieldDefinition::create('string_long')
+      ->setLabel(t('Revision log message'))
+      ->setDescription(t('Briefly describe the changes you have made.'))
+      ->setRevisionable(TRUE)
+      ->setTranslatable(TRUE)
+      ->setDisplayOptions('form', array(
+      'type' => 'string_textarea',
+      'weight' => 25,
+      'settings' => array(
+        'rows' => 4,
+      ),
+    ));
+
     return $fields;
   }
 }

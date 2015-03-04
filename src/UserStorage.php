@@ -82,12 +82,36 @@ class UserStorage extends BaseUserStorage {
    */
   public function install() {
     $this->getStorageSchema()->install();
+
     db_update($this->entityType->getBaseTable())
       ->expression('vid', 'uid')
       ->execute();
+
     db_update($this->entityType->getDataTable())
       ->expression('vid', 'uid')
       ->execute();
+
+    $query = db_select($this->entityType->getBaseTable(), 'u')
+      ->fields('u', array('uid', 'vid', 'langcode'));
+    $result = $query->execute();
+    foreach ($result as $record) {
+      $fields = (array) $record;
+      $fields['revision_timestamp'] = REQUEST_TIME;
+      $fields['revision_uid'] = '1';
+      db_insert($this->entityType->getRevisionTable())
+        ->fields($fields)
+        ->execute();
+    }
+
+    $query = db_select($this->entityType->getDataTable(), 'u')
+      ->fields('u', array('uid', 'vid', 'langcode', 'default_langcode'));
+    $result = $query->execute();
+    foreach ($result as $record) {
+      db_insert($this->entityType->getRevisionDataTable())
+        ->fields((array) $record)
+        ->execute();
+    }
+
     $this->getStorageSchema()->postinstall();
   }
 
