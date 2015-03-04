@@ -51,6 +51,8 @@ class UserStorageSchema extends BaseUserStorageSchema implements UserStorageSche
    */
   public function install() {
     $schema_handler = $this->database->schema();
+
+    // Create shared tables and fields
     $schema = $this->getEntitySchema($this->entityType, TRUE);
     $installed_tables = array();
     foreach ($schema as $table_name => $table_schema) {
@@ -63,6 +65,11 @@ class UserStorageSchema extends BaseUserStorageSchema implements UserStorageSche
       }
     }
     $this->keyValue()->set('installed_tables', $installed_tables);
+
+    // Create dedicated tables
+    foreach ($this->getDedicatedRevisionTablesSchema() as $table_name => $table_schema) {
+      $schema_handler->createTable($table_name, $table_schema);
+    }
   }
 
   /**
@@ -81,6 +88,48 @@ class UserStorageSchema extends BaseUserStorageSchema implements UserStorageSche
         }
       }
     }
+  }
+
+  /**
+   * Install user revision storage schema.
+   */
+  public function uninstall() {
+    $schema_handler = $this->database->schema();
+
+    foreach ($this->keyValue()->get('installed_indexes', array()) as $table_name => $indexes) {
+      foreach ($indexes as $indexe_name) {
+        $schema_handler->dropIndex($table_name, $indexe_name);
+      }
+    }
+
+    foreach ($this->keyValue()->get('installed_unique_keys', array()) as $table_name => $keys) {
+      foreach ($keys as $key_name) {
+        $schema_handler->dropUniqueKey($table_name, $key_name);
+      }
+    }
+
+    foreach ($this->keyValue()->get('installed_fields', array()) as $table_name => $fields) {
+      foreach ($fields as $field_name) {
+        $schema_handler->dropField($table_name, $field_name);
+      }
+    }
+
+    foreach ($this->keyValue()->get('installed_tables', array()) as $table_name) {
+      $schema_handler->dropTable($table_name);
+    }
+
+    foreach ($this->getDedicatedRevisionTables() as $table_name) {
+      $schema_handler->dropTable($table_name);
+    }
+
+    $this->keyValue()->deleteAll();
+  }
+
+  /**
+   * @return array
+   */
+  public function getDedicatedRevisionTables() {
+    return array_keys($this->getDedicatedRevisionTablesSchema());
   }
 
   /**
@@ -130,34 +179,21 @@ class UserStorageSchema extends BaseUserStorageSchema implements UserStorageSche
   }
 
   /**
-   * Install user revision storage schema.
+   * @return array
    */
-  public function uninstall() {
-    $schema_handler = $this->database->schema();
-
-    foreach ($this->keyValue()->get('installed_indexes', array()) as $table_name => $indexes) {
-      foreach ($indexes as $indexe_name) {
-        $schema_handler->dropIndex($table_name, $indexe_name);
+  protected function getDedicatedRevisionTablesSchema() {
+    $schema = array();
+    $base_filed_definitions = $this->entityManager->getBaseFieldDefinitions($this->storage->getEntityTypeId());
+    $filed_storage_definitions = $this->entityManager->getFieldStorageDefinitions($this->storage->getEntityTypeId());
+    foreach ($filed_storage_definitions as $field_name => $storage_definition) {
+      if (array_key_exists($field_name, $base_filed_definitions)) {
+        continue;
       }
+      $revision_table_name = $this->storage->getTableMapping()->getDedicatedRevisionTableName($storage_definition);
+      $revision_table_schema = $this->getDedicatedTableSchema($storage_definition)[$revision_table_name];
+      $schema[$revision_table_name] = $revision_table_schema;
     }
-
-    foreach ($this->keyValue()->get('installed_unique_keys', array()) as $table_name => $keys) {
-      foreach ($keys as $key_name) {
-        $schema_handler->dropUniqueKey($table_name, $key_name);
-      }
-    }
-
-    foreach ($this->keyValue()->get('installed_fields', array()) as $table_name => $fields) {
-      foreach ($fields as $field_name) {
-        $schema_handler->dropField($table_name, $field_name);
-      }
-    }
-
-    foreach ($this->keyValue()->get('installed_tables', array()) as $table_name) {
-      $schema_handler->dropTable($table_name);
-    }
-
-    $this->keyValue()->deleteAll();
+    return $schema;
   }
 
   /**
