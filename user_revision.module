@@ -7,6 +7,8 @@
 use Drupal\Core\Entity\EntityTypeInterface;
 use Drupal\Core\Field\BaseFieldDefinition;
 use Drupal\user\Entity\User as UserEntity;
+use Drupal\Core\Form\FormStateInterface;
+use Drupal\user\UserInterface;
 
 /**
  * Implements hook_entity_type_alter().
@@ -101,4 +103,103 @@ function user_revision_install() {
  */
 function user_revision_uninstall() {
   \Drupal::entityManager()->getStorage('user')->uninstall();
+}
+
+/**
+ * Implements hook_form_BASE_FORM_ID_alter() for user_form.
+ * 
+ * @see user_revision_form_user_form_builder()
+ */
+function user_revision_form_user_form_alter(&$form, FormStateInterface $form_state, $form_id) {
+  $config = \Drupal::config('user_revision.settings');
+  /* @var $user \Drupal\user\Entity\User */
+  $user = $form_state->getFormObject()->getEntity();
+
+  // Add a revision_log field if the "Create new revision" option is checked,
+  // or if the current user has the ability to check that option.
+  $form['revision_information'] = array(
+    '#type' => 'details',
+    '#title' => t('Revision information'),
+    // Open by default when "Create new revision" is checked.
+    '#open' => $config->get('user_revision_default_enabled'),
+    '#attributes' => array(
+      'class' => array('user-form-revision-information'),
+    ),
+    '#weight' => 20,
+    '#optional' => TRUE,
+  );
+
+  $form['revision'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Create new revision'),
+    '#default_value' => $config->get('user_revision_default_enabled'),
+    '#access' => \Drupal::currentUser()->hasPermission('administer users'),
+    '#group' => 'revision_information',
+  );
+
+  $form['revision_log'] += array(
+    '#states' => array(
+      'visible' => array(
+        ':input[name="revision"]' => array('checked' => TRUE),
+      ),
+    ),
+    '#group' => 'revision_information'
+  );
+
+  // Define entity builder
+  $form['#entity_builders'][] = 'user_revision_form_user_form_builder';
+}
+
+/**
+ * Entity form builder for user_form.
+ * 
+ * @see user_revision_form_user_form_alter()
+ */
+function user_revision_form_user_form_builder($entity_type, UserInterface $user, &$form, FormStateInterface $form_state) {
+  // Save as a new revision if requested to do so.
+  if (!$form_state->isValueEmpty('revision') && $form_state->getValue('revision') != FALSE) {
+    $user->setNewRevision();
+    // If a new revision is created, save the current user as revision author.
+    $user->set('revision_timestamp', REQUEST_TIME);
+    $user->set('revision_uid', \Drupal::currentUser()->id());
+  }
+  else {
+    $user->setNewRevision(FALSE);
+  }
+}
+
+/**
+ * Implements hook_form_BASE_FORM_ID_alter() for user_admin_settings.
+ * 
+ * @see user_revision_form_user_admin_settings_submit()
+ */
+function user_revision_form_user_admin_settings_alter(&$form, FormStateInterface $form_state, $form_id) {
+  $config = \Drupal::config('user_revision.settings');
+
+  $form['revision'] = array(
+    '#type' => 'details',
+    '#title' => t('Revision information'),
+    '#open' => TRUE,
+    '#weight' => 0
+  );
+
+  $form['revision']['revision_default_status'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Create new revision'),
+    '#default_value' => $config->get('user_revision_default_enabled')
+  );
+
+  // Add submit handler to save revision configuration.
+  $form['#submit'][] = 'user_revision_form_user_admin_settings_submit';
+}
+
+/**
+ * Form submission handler for user_admin_settings().
+ *
+ * @see user_revision_form_user_admin_settings_alter()
+ */
+function user_revision_form_user_admin_settings_submit($form, FormStateInterface $form_state) {
+  $config = \Drupal::configFactory()->getEditable('user_revision.settings');
+  $config->set('user_revision_default_enabled', $form_state->getValue('revision_default_status'));
+  $config->save();
 }
