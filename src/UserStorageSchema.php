@@ -88,13 +88,33 @@ class UserStorageSchema extends BaseUserStorageSchema implements UserStorageSche
         }
       }
     }
+
+    // Delete langcode field from base table
+    $schema_handler->dropField($this->entityType->getBaseTable(), 'langcode');
   }
 
   /**
-   * Install user revision storage schema.
+   * Uninstall user revision storage schema.
    */
   public function uninstall() {
     $schema_handler = $this->database->schema();
+
+    // Create langcode field from base table
+    $schema = $this->getEntitySchema($this->entityType, TRUE);
+    $langcode_schema = $schema[$this->entityType->getRevisionTable()]['fields']['langcode'];
+    $langcode_schema['not null'] = false;
+    $schema_handler->addField($this->entityType->getBaseTable(), 'langcode', $langcode_schema);
+  }
+
+  /**
+   * Uninstall user revision storage schema (post uninstall).
+   */
+  public function postuninstall() {
+    $schema_handler = $this->database->schema();
+
+    $schema = $this->getEntitySchema($this->entityType, TRUE);
+    $langcode_schema = $schema[$this->entityType->getRevisionTable()]['fields']['langcode'];
+    $schema_handler->changeField($this->entityType->getBaseTable(), 'langcode', 'langcode', $langcode_schema);
 
     foreach ($this->keyValue()->get('installed_indexes', array()) as $table_name => $indexes) {
       foreach ($indexes as $indexe_name) {

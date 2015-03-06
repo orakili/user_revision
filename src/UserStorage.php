@@ -120,6 +120,14 @@ class UserStorage extends BaseUserStorage {
    */
   public function uninstall() {
     $this->getStorageSchema()->uninstall();
+
+    db_update($this->entityType->getBaseTable())
+      ->expression(
+        'langcode', db_select($this->entityType->getRevisionTable(), 'r')->fields('r', array('langcode'))->where('r.vid = ' . $this->entityType->getBaseTable() . '.vid')
+      )
+      ->execute();
+
+    $this->getStorageSchema()->postuninstall();
   }
 
 }

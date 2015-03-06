@@ -73,6 +73,7 @@ function user_revision_entity_base_field_info(EntityTypeInterface $entity_type) 
  */
 function user_revision_entity_base_field_info_alter(&$fields, EntityTypeInterface $entity_type) {
   if ($entity_type->id() == 'user') {
+    $fields['langcode']->setRevisionable(TRUE);
     $fields['name']->setRevisionable(TRUE);
     $fields['pass']->setRevisionable(TRUE);
     $fields['mail']->setRevisionable(TRUE);
@@ -148,6 +149,16 @@ function user_revision_form_user_form_alter(&$form, FormStateInterface $form_sta
 
   // Define entity builder
   $form['#entity_builders'][] = 'user_revision_form_user_form_builder';
+}
+
+/**
+ * Implements hook_form_FORM_ID_alter() for user_register_form.
+ */
+function user_revision_form_user_register_form_alter(&$form, FormStateInterface $form_state, $form_id) {
+  // Remove revision log from register form for anonymous users
+  if (\Drupal::currentUser()->isAnonymous()) {
+    unset($form['revision_log']);
+  }
 }
 
 /**
