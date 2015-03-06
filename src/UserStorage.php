@@ -16,11 +16,12 @@ use Drupal\Core\Password\PasswordInterface;
 use Drupal\Core\Language\LanguageManagerInterface;
 use Drupal\Core\KeyValueStore\KeyValueFactoryInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
+use Drupal\user\UserInterface;
 
 /**
  * Controller class for users.
  */
-class UserStorage extends BaseUserStorage {
+class UserStorage extends BaseUserStorage implements UserStorageInterface {
 
   /**
    * The key/value store.
@@ -75,6 +76,24 @@ class UserStorage extends BaseUserStorage {
       }
     }
     return $this->storageSchema;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function revisionIds(UserInterface $user) {
+    return $this->database->query(
+        'SELECT vid FROM {' . $this->entityType->getRevisionTable() . '} WHERE uid=:uid ORDER BY vid', array(':uid' => $user->id())
+      )->fetchCol();
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function revisionCount(UserInterface $user) {
+    return $this->database->query(
+        'SELECT COUNT(DISTINCT vid) FROM {' . $this->entityType->getRevisionTable() . '} WHERE uid=:uid', array(':uid' => $user->id())
+      )->fetchField();
   }
 
   /**

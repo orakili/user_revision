@@ -1,0 +1,5 @@
+user.admin:
+  version: VERSION
+  css:
+    theme:
+      css/user_revision.admin.css: {}

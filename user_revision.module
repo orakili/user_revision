@@ -23,6 +23,7 @@ function user_revision_entity_type_alter(array &$entity_types) {
   $entity_keys = $user->getKeys();
   $entity_keys['revision'] = 'vid';
   $user->set('entity_keys', $entity_keys);
+  $user->setLinkTemplate('version-history', '/user/{user}/revisions');
 }
 
 /**
@@ -112,6 +113,24 @@ function user_revision_uninstall() {
 function user_revision_user_presave(UserInterface $user) {
   if (!count($user->get('revision_uid')->getValue())) {
     $user->set('revision_uid', \Drupal::currentUser()->id());
+  }
+
+  if (isset($user->original) && !$user->isNewRevision()) {
+    // If we are updating an existing user without adding a new revision, we
+    // need to make sure $entity->revision_log is reset whenever it is empty.
+    // Therefore, this code allows us to avoid clobbering an existing log
+    // entry with an empty one.
+    $user->revision_log = $user->original->revision_log->value;
+  }
+}
+
+/**
+ * Implements hook_ENTITY_TYPE_prepare_form() for user entities.
+ */
+function user_revision_user_prepare_form(UserInterface $user, $operation, FormStateInterface $form_state) {
+  if (!$user->isNew()) {
+    // Remove the revision log message from the original user entity.
+    $user->revision_log = NULL;
   }
 }
 
