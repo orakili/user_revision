@@ -46,51 +46,144 @@ class UserStorageSchema extends BaseUserStorageSchema implements UserStorageSche
     $this->keyvalue = $keyvalue;
   }
 
+  protected function getSharedTableFieldSchema(\Drupal\Core\Field\FieldStorageDefinitionInterface $storage_definition, $table_name, array $column_mapping) {
+    $schema = parent::getSharedTableFieldSchema($storage_definition, $table_name, $column_mapping);
+    if ($table_name == 'users_field_data') {
+      //hook_field_schema
+      $schema['fields']['vid']['initial'] = '0';
+    }
+    return $schema;
+  }
+
   /**
    * Install user revision storage schema.
    */
-  public function install() {
+  public function installRevision() {
+    $this->installRevisionEntityTables();
+    $this->installRevisionFieldStorageDefinitions();
+    $this->installRevisionEntitySchemaData();
+  }
+
+  /**
+   * Create entity tables.
+   */
+  protected function installRevisionEntityTables() {
     $schema_handler = $this->database->schema();
+    $entity_type_id = $this->entityType->id();
+    $entity_type = $this->entityType;
+    $original_entity_type = $this->entityManager->getLastInstalledDefinition($entity_type_id);
 
-    // Create shared tables and fields
-    $schema = $this->getEntitySchema($this->entityType, TRUE);
-    $installed_tables = array();
-    foreach ($schema as $table_name => $table_schema) {
-      if ($schema_handler->tableExists($table_name)) {
-        $this->installExistsTable($table_name, $table_schema);
-      }
-      else {
+    $entity_schema = $this->getEntitySchema($entity_type, TRUE);
+    $original_entity_schema = $this->getEntitySchema($original_entity_type, TRUE);
+
+    foreach (array_diff_key($entity_schema, $original_entity_schema) as $table_name => $table_schema) {
+      if (!$schema_handler->tableExists($table_name)) {
         $schema_handler->createTable($table_name, $table_schema);
-        $installed_tables[] = $table_name;
       }
-    }
-    $this->keyValue()->set('installed_tables', $installed_tables);
-
-    // Create dedicated tables
-    foreach ($this->getDedicatedRevisionTablesSchema() as $table_name => $table_schema) {
-      $schema_handler->createTable($table_name, $table_schema);
     }
   }
 
   /**
-   * Install user revision storage schema (post install).
-   * 
-   * Update not null fileds.
+   * Update entity indexes and unique keys
    */
-  public function postinstall() {
+  protected function installRevisionEntitySchemaData() {
     $schema_handler = $this->database->schema();
-    $schema = $this->getEntitySchema($this->entityType, TRUE);
-    foreach ($this->keyValue()->get('installed_fields', array()) as $table_name => $fields) {
-      foreach ($fields as $field_name) {
-        $field_schema = $schema[$table_name]['fields'][$field_name];
-        if ($field_schema['not null']) {
-          $schema_handler->changeField($table_name, $field_name, $field_name, $field_schema);
+    $entity_type = $this->entityType;
+    $entity_schema = $this->getEntitySchema($entity_type, TRUE);
+
+    // Drop original entity indexes and unique keys.
+    foreach ($this->loadEntitySchemaData($entity_type) as $table_name => $schema) {
+      if (!empty($schema['indexes'])) {
+        foreach ($schema['indexes'] as $name => $specifier) {
+          $schema_handler->dropIndex($table_name, $name);
+        }
+      }
+      if (!empty($schema['unique keys'])) {
+        foreach ($schema['unique keys'] as $name => $specifier) {
+          $schema_handler->dropUniqueKey($table_name, $name);
         }
       }
     }
 
-    // Delete langcode field from base table
-    $schema_handler->dropField($this->entityType->getBaseTable(), 'langcode');
+    // Create new entity indexes and unique keys.
+    foreach ($this->getEntitySchemaData($entity_type, $entity_schema) as $table_name => $schema) {
+      if (!empty($schema['indexes'])) {
+        foreach ($schema['indexes'] as $name => $specifier) {
+          if (!$schema_handler->indexExists($table_name, $name)) {
+            $schema_handler->addIndex($table_name, $name, $specifier);
+          }
+        }
+      }
+      if (!empty($schema['unique keys'])) {
+        foreach ($schema['unique keys'] as $name => $specifier) {
+          /** @see https://www.drupal.org/node/2445839 */
+          try {
+            $schema_handler->addUniqueKey($table_name, $name, $specifier);
+          }
+          catch (SchemaObjectExistsException $ex) {
+            
+          }
+        }
+      }
+    }
+  }
+
+  /**
+   * Update field storage definitions
+   */
+  protected function installRevisionFieldStorageDefinitions() {
+    $entity_type_id = $this->entityType->id();
+    $table_mapping = $this->storage->getTableMapping();
+
+    $field_storage_definitions = $this->entityManager->getFieldStorageDefinitions($entity_type_id);
+    $original_field_storage_definitions = $this->entityManager->getLastInstalledFieldStorageDefinitions($entity_type_id);
+    $all_filed_storage_definitions = array_merge(array_keys($field_storage_definitions), array_keys($original_field_storage_definitions));
+
+    foreach ($all_filed_storage_definitions as $field) {
+      if (isset($original_field_storage_definitions[$field]) && !isset($field_storage_definitions[$field])) {
+        $this->performFieldSchemaOperation('delete', $original_field_storage_definitions[$field]);
+      }
+      else if (!isset($original_field_storage_definitions[$field]) && isset($field_storage_definitions[$field])) {
+        $this->performFieldSchemaOperation('create', $field_storage_definitions[$field]);
+      }
+      else {
+        // Create dedicated field revision table
+        if ($table_mapping->requiresDedicatedTableStorage($field_storage_definitions[$field])) {
+          $this->createDedicatedTableSchema($field_storage_definitions[$field]);
+        }
+        if ($field_storage_definitions[$field]->getSchema() != $original_field_storage_definitions[$field]->getSchema()) {
+          $this->performFieldSchemaOperation('update', $field_storage_definitions[$field], $original_field_storage_definitions[$field]);
+        }
+      }
+    }
+  }
+
+  /**
+   * Post install storage data
+   */
+  public function postinstallRevision() {
+    $schema_handler = $this->database->schema();
+    $entity_type_id = $this->entityType->id();
+    $entity_type = $this->entityType;
+    $original_entity_type = $this->entityManager->getLastInstalledDefinition($entity_type_id);
+
+    $entity_schema = $this->getEntitySchema($entity_type, TRUE);
+    $original_entity_schema = $this->getEntitySchema($original_entity_type, TRUE);
+
+    foreach ($original_entity_schema as $table_name => $table_schema) {
+      // Drop unused original tables
+      if (!isset($entity_schema[$table_name])) {
+        $schema_handler->dropTable($table_name);
+      }
+      else {
+        // Drop original fields
+        foreach ($table_schema['fields'] as $filed_name => $specifier) {
+          if (!isset($entity_schema[$table_name]['fields'][$filed_name])) {
+            $schema_handler->dropField($table_name, $filed_name);
+          }
+        }
+      }
+    }
   }
 
   /**

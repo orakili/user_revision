@@ -99,8 +99,8 @@ class UserStorage extends BaseUserStorage implements UserStorageInterface {
   /**
    * Install user revision storage.
    */
-  public function install() {
-    $this->getStorageSchema()->install();
+  public function installRevision() {
+    $this->getStorageSchema()->installRevision();
 
     db_update($this->entityType->getBaseTable())
       ->expression('vid', 'uid')
@@ -131,13 +131,13 @@ class UserStorage extends BaseUserStorage implements UserStorageInterface {
         ->execute();
     }
 
-    $this->getStorageSchema()->postinstall();
+    $this->getStorageSchema()->postinstallRevision();
   }
 
   /**
    * Uninstall user revision storage.
    */
-  public function uninstall() {
+  public function uninstallRevision() {
     $this->getStorageSchema()->uninstall();
 
     db_update($this->entityType->getBaseTable())

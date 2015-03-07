@@ -108,7 +108,7 @@ class UserRevisionAccessCheck implements AccessInterface {
     }
 
     // Check minimal revisions count
-    if ($this->userStorage->revisionCount($user) < 2) {
+    if (user_revision_count($user) < 2) {
       return FALSE;
     }
 

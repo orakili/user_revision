@@ -1,0 +1,43 @@
+<?php
+
+/**
+ * @file
+ * User Revision module install.
+ */
+use Drupal\user\Entity\User as UserEntity;
+
+/**
+ * Implements hook_module_preinstall().
+ */
+function user_revision_module_preinstall($module) {
+  if ($module == 'user_revision') {
+    $all_users = &drupal_static('user_revision_all_users', array());
+    foreach (UserEntity::loadMultiple() as $user) {
+      $all_users[$user->id()] = $user->toArray();
+    }
+  }
+}
+
+/**
+ * Implements hook_install().
+ */
+function user_revision_install() {
+  $user_storage = \Drupal::entityManager()->getStorage('user');
+
+  $user_storage->onEntityTypeDelete($user_storage->getEntityType());
+  $user_storage->onEntityTypeCreate($user_storage->getEntityType());
+
+  $all_users = &drupal_static('user_revision_all_users', array());
+  foreach ($all_users as $user) {
+    $new_user = UserEntity::create($user);
+    $new_user->save();
+  }
+  drupal_static_reset('user_revision_all_users');
+}
+
+/**
+ * Implements hook_uninstall().
+ */
+function user_revision_uninstall() {
+  //
+}

@@ -69,7 +69,7 @@ class UserController extends ControllerBase implements ContainerInjectionInterfa
 
     $rows = array();
 
-    $vids = $user_storage->revisionIds($user);
+    $vids = user_revision_ids($user);
 
     foreach (array_reverse($vids) as $vid) {
       if ($revision = $user_storage->loadRevision($vid)) {

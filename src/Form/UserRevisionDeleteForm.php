@@ -104,7 +104,7 @@ class UserRevisionDeleteForm extends ConfirmFormBase {
       'entity.user.canonical', array('user' => $this->revision->id())
     );
 
-    if ($this->userStorage->revisionCount($this->revision) > 1) {
+    if (user_revision_count($this->revision) > 1) {
       $form_state->setRedirect(
         'entity.user.version_history', array('user' => $this->revision->id())
       );

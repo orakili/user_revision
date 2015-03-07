@@ -6,7 +6,6 @@
  */
 use Drupal\Core\Entity\EntityTypeInterface;
 use Drupal\Core\Field\BaseFieldDefinition;
-use Drupal\user\Entity\User as UserEntity;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\user\UserInterface;
 
@@ -16,8 +15,8 @@ use Drupal\user\UserInterface;
 function user_revision_entity_type_alter(array &$entity_types) {
   /* @var $user \Drupal\Core\Entity\ContentEntityType */
   $user = $entity_types['user'];
-  $user->setStorageClass('Drupal\user_revision\UserStorage');
-  $user->setHandlerClass('storage_schema', 'Drupal\user_revision\UserStorageSchema');
+  //$user->setStorageClass('Drupal\user_revision\UserStorage');
+  //$user->setHandlerClass('storage_schema', 'Drupal\user_revision\UserStorageSchema');
   $user->set('revision_table', 'users_revision');
   $user->set('revision_data_table', 'users_field_revision');
   $entity_keys = $user->getKeys();
@@ -85,26 +84,6 @@ function user_revision_entity_base_field_info_alter(&$fields, EntityTypeInterfac
     $fields['created']->setRevisionable(TRUE);
     $fields['changed']->setRevisionable(TRUE);
   }
-}
-
-/**
- * Implements hook_install().
- */
-function user_revision_install() {
-  \Drupal::entityManager()->getStorage('user')->install();
-  // Fill revision tables
-  foreach (UserEntity::loadMultiple() as $user) {
-    if ($user->id() > 0) {
-      $user->save();
-    }
-  }
-}
-
-/**
- * Implements hook_uninstall().
- */
-function user_revision_uninstall() {
-  \Drupal::entityManager()->getStorage('user')->uninstall();
 }
 
 /**
@@ -245,4 +224,36 @@ function user_revision_form_user_admin_settings_submit($form, FormStateInterface
   $config = \Drupal::configFactory()->getEditable('user_revision.settings');
   $config->set('user_revision_default_enabled', $form_state->getValue('revision_default_status'));
   $config->save();
+}
+
+/**
+ * Internal functions.
+ */
+
+/**
+ * Returns a list of user revision IDs for a specific user.
+ *
+ * @param \Drupal\user\UserInterface
+ *   The user entity.
+ *
+ * @return int[]
+ *   User revision IDs (in ascending order).
+ */
+function user_revision_ids(UserInterface $user) {
+  $entity_type = \Drupal::entityManager()->getStorage('user')->getEntityType();
+  return db_query('SELECT vid FROM {' . $entity_type->getRevisionTable() . '} WHERE uid=:uid ORDER BY vid', array(':uid' => $user->id()))->fetchCol();
+}
+
+/**
+ * Returns a count of user revisions for a specific user.
+ *
+ * @param \Drupal\user\UserInterface
+ *   The user entity.
+ *
+ * @return int
+ *   User revision count.
+ */
+function user_revision_count(UserInterface $user) {
+  $entity_type = \Drupal::entityManager()->getStorage('user')->getEntityType();
+  return db_query('SELECT COUNT(DISTINCT vid) FROM {' . $entity_type->getRevisionTable() . '} WHERE uid=:uid', array(':uid' => $user->id()))->fetchField();
 }
