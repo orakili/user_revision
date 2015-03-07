@@ -16,6 +16,11 @@ function user_revision_module_preinstall($module) {
     foreach (UserEntity::loadMultiple() as $user) {
       $all_users[$user->id()] = $user->toArray();
     }
+
+    /* @var $user_storage \Drupal\Core\Entity\Sql\SqlContentEntityStorage */
+    $entity_manager = \Drupal::entityManager();
+    $user_storage = $entity_manager->getStorage('user');
+    $entity_manager->onEntityTypeDelete($user_storage->getEntityType());
   }
 }
 
@@ -23,10 +28,10 @@ function user_revision_module_preinstall($module) {
  * Implements hook_install().
  */
 function user_revision_install() {
-  $user_storage = \Drupal::entityManager()->getStorage('user');
-
-  $user_storage->onEntityTypeDelete($user_storage->getEntityType());
-  $user_storage->onEntityTypeCreate($user_storage->getEntityType());
+  /* @var $user_storage \Drupal\Core\Entity\Sql\SqlContentEntityStorage */
+  $entity_manager = \Drupal::entityManager();
+  $user_storage = $entity_manager->getStorage('user');
+  $entity_manager->onEntityTypeCreate($user_storage->getEntityType());
 
   $all_users = &drupal_static('user_revision_all_users', array());
   foreach ($all_users as $user) {
