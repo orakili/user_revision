@@ -5,6 +5,7 @@
  * User Revision module install.
  */
 use Drupal\user\Entity\User as UserEntity;
+use Drupal\Core\Entity\EntityInterface;
 
 /**
  * Implements hook_module_preinstall().
@@ -29,10 +30,25 @@ function user_revision_install() {
 
   $all_users = &drupal_static('user_revision_all_users', array());
   foreach ($all_users as $user) {
-    $new_user = UserEntity::create($user);
-    $new_user->save();
+    $user_entity = UserEntity::create($user);
+    $user_entity->save();
   }
   drupal_static_reset('user_revision_all_users');
+}
+
+/**
+ * Implements hook_entity_presave().
+ */
+function user_revision_entity_presave(EntityInterface $entity) {
+  if ($entity->getEntityTypeId() == 'user') {
+    $all_users = &drupal_static('user_revision_all_users', array());
+    if (isset($all_users[$entity->id()]) && isset($all_users[$entity->id()]['pass'])) {
+      $entity->set('pass', current($all_users[$entity->id()]['pass'])['value']);
+    }
+    if (isset($all_users[$entity->id()]) && isset($all_users[$entity->id()]['changed'])) {
+      $entity->set('changed', current($all_users[$entity->id()]['changed'])['value']);
+    }
+  }
 }
 
 /**
