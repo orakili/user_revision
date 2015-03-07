@@ -55,3 +55,10 @@ function user_revision_entity_presave(EntityInterface $entity) {
     }
   }
 }
+
+/**
+ * Implements hook_uninstall().
+ */
+function user_revision_uninstall() {
+  throw new \RuntimeException('This module cannot be uninstalled.');
+}
