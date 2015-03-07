@@ -16,6 +16,7 @@ use Drupal\Component\Utility\String;
 use Drupal\Component\Utility\Xss;
 use Drupal\Core\Url;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
+use Drupal\user_revision\Access\UserRevisionAccessCheck;
 
 /**
  * Returns responses for User revision routes.
@@ -60,13 +61,11 @@ class UserController extends ControllerBase implements ContainerInjectionInterfa
   public function revisionOverview(UserInterface $user) {
     $account = $this->currentUser();
     $user_storage = $this->entityManager()->getStorage('user');
+    $access_check = new UserRevisionAccessCheck($this->entityManager());
 
     $build = array();
     $build['#title'] = $this->t('Revisions for %title', array('%title' => $user->label()));
     $header = array($this->t('Revision'), $this->t('Operations'));
-
-    $revert_permission = ($account->id() == $user->id() && $account->hasPermission('revert own user revisions') || $account->hasPermission('revert all user revisions') || $account->hasPermission('administer users'));
-    $delete_permission = ($account->id() == $user->id() && $account->hasPermission('delete own user revisions') || $account->hasPermission('delete all user revisions') || $account->hasPermission('administer users'));
 
     $rows = array();
 
@@ -99,14 +98,14 @@ class UserController extends ControllerBase implements ContainerInjectionInterfa
           $row['revision']['data']['#markup'] = $this->t('!date by !username', array('!date' => $this->l($this->dateFormatter->format($revision->revision_timestamp->value, 'short'), new Url('user.revision_show', array('user' => $user->id(), 'user_revision' => $vid))), '!username' => drupal_render($username)));
           $row['revision']['data']['#markup'] .= ($revision->revision_log->value != '') ? '<p class="revision-log">' . Xss::filter($revision->revision_log->value) . '</p>' : '';
 
-          if ($revert_permission) {
+          if ($access_check->checkAccess($revision, $account, 'update')) {
             $links['revert'] = array(
               'title' => $this->t('Revert'),
               'url' => Url::fromRoute('user.revision_revert_confirm', ['user' => $user->id(), 'user_revision' => $vid]),
             );
           }
 
-          if ($delete_permission) {
+          if ($access_check->checkAccess($revision, $account, 'delete')) {
             $links['delete'] = array(
               'title' => $this->t('Delete'),
               'url' => Url::fromRoute('user.revision_delete_confirm', ['user' => $user->id(), 'user_revision' => $vid]),

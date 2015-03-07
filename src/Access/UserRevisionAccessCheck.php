@@ -80,15 +80,11 @@ class UserRevisionAccessCheck implements AccessInterface {
    *   performed.
    * @param string $op
    *   (optional) The specific operation being checked. Defaults to 'view.'
-   * @param string|null $langcode
-   *   (optional) Language code for the variant of the node. Different language
-   *   variants might have different permissions associated. If NULL, the
-   *   original langcode of the node is used. Defaults to NULL.
    *
    * @return bool
    *   TRUE if the operation may be performed, FALSE otherwise.
    */
-  public function checkAccess(UserInterface $user, AccountInterface $account, $op = 'view', $langcode = NULL) {
+  public function checkAccess(UserInterface $user, AccountInterface $account, $op = 'view') {
     $map = array(
       'view' => 'view all user revisions',
       'update' => 'revert all user revisions',
@@ -107,7 +103,7 @@ class UserRevisionAccessCheck implements AccessInterface {
     }
 
     // Perform basic permission checks first.
-    if (!$account->hasPermission($map[$op]) && !($account->id() == $user->id() && $account->hasPermission($own_map[$op])) && !$account->hasPermission('administer users')) {
+    if (!$account->hasPermission($map[$op]) && !($account->id() == $user->id() && $account->hasPermission($own_map[$op]))) {
       return FALSE;
     }
 
