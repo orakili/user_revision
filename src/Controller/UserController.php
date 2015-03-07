@@ -15,6 +15,7 @@ use Drupal\user\UserInterface;
 use Drupal\Component\Utility\String;
 use Drupal\Component\Utility\Xss;
 use Drupal\Core\Url;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /**
  * Returns responses for User revision routes.
@@ -64,8 +65,8 @@ class UserController extends ControllerBase implements ContainerInjectionInterfa
     $build['#title'] = $this->t('Revisions for %title', array('%title' => $user->label()));
     $header = array($this->t('Revision'), $this->t('Operations'));
 
-    $revert_permission = (1 || ($account->hasPermission("revert $type revisions") || $account->hasPermission('revert all revisions') || $account->hasPermission('administer nodes')) && $node->access('update'));
-    $delete_permission = (1 || ($account->hasPermission("delete $type revisions") || $account->hasPermission('delete all revisions') || $account->hasPermission('administer nodes')) && $node->access('delete'));
+    $revert_permission = ($account->id() == $user->id() && $account->hasPermission('revert own user revisions') || $account->hasPermission('revert all user revisions') || $account->hasPermission('administer users'));
+    $delete_permission = ($account->id() == $user->id() && $account->hasPermission('delete own user revisions') || $account->hasPermission('delete all user revisions') || $account->hasPermission('administer users'));
 
     $rows = array();
 
@@ -90,6 +91,7 @@ class UserController extends ControllerBase implements ContainerInjectionInterfa
           $row['operations'] = array('data' => String::placeholder($this->t('current revision')), 'class' => array('revision-current'));
         }
         else {
+          $links = array();
           $username = array(
             '#theme' => 'username',
             '#account' => $revision_author,
@@ -111,12 +113,14 @@ class UserController extends ControllerBase implements ContainerInjectionInterfa
             );
           }
 
-          $row['operations'] = array(
-            'data' => array(
-              '#type' => 'operations',
-              '#links' => $links,
-            ),
-          );
+          if ($links) {
+            $row['operations'] = array(
+              'data' => array(
+                '#type' => 'operations',
+                '#links' => $links,
+              ),
+            );
+          }
         }
 
         $rows[] = $row;
@@ -138,17 +142,22 @@ class UserController extends ControllerBase implements ContainerInjectionInterfa
   /**
    * Displays a user revision.
    *
+   * @param int $user
+   *   The user ID.
    * @param int $user_revision
    *   The user revision ID.
    *
    * @return array
    *   An array suitable for drupal_render().
    */
-  public function revisionShow($user_revision) {
-    $user = $this->entityManager()->getStorage('user')->loadRevision($user_revision);
+  public function revisionShow($user, $user_revision) {
+    $user_history = $this->entityManager()->getStorage('user')->loadRevision($user_revision);
+    if ($user_history->id() != $user) {
+      throw new NotFoundHttpException;
+    }
     /* @var $view_builder \Drupal\Core\Entity\EntityViewBuilder */
-    $view_builder = $this->entityManager()->getViewBuilder($user->getEntityTypeId());
-    return $view_builder->view($user);
+    $view_builder = $this->entityManager()->getViewBuilder($user_history->getEntityTypeId());
+    return $view_builder->view($user_history);
   }
 
   /**

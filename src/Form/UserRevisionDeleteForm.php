@@ -12,6 +12,7 @@ use Drupal\Core\Entity\EntityStorageInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Url;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /**
  * Provides a form for delete a user revision.
@@ -26,7 +27,7 @@ class UserRevisionDeleteForm extends ConfirmFormBase {
   protected $revision;
 
   /**
-   * The node storage.
+   * The user storage.
    *
    * @var \Drupal\Core\Entity\EntityStorageInterface
    */
@@ -83,8 +84,11 @@ class UserRevisionDeleteForm extends ConfirmFormBase {
   /**
    * {@inheritdoc}
    */
-  public function buildForm(array $form, FormStateInterface $form_state, $user_revision = NULL) {
+  public function buildForm(array $form, FormStateInterface $form_state, $user = NULL, $user_revision = NULL) {
     $this->revision = $this->userStorage->loadRevision($user_revision);
+    if ($this->revision->id() != $user) {
+      throw new NotFoundHttpException;
+    }
     return parent::buildForm($form, $form_state);
   }
 

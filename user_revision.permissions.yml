@@ -1,0 +1,17 @@
+view own user revisions:
+  title: 'View own revisions'
+
+revert own user revisions:
+  title: 'Revert own revisions'
+
+delete own user revisions:
+  title: 'Delete own revisions'
+
+view all user revisions:
+  title: 'View all revisions'
+
+revert all user revisions:
+  title: 'Revert all revisions'
+
+delete all user revisions:
+  title: 'Delete all revisions'
