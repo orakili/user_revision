@@ -95,6 +95,11 @@ function user_revision_user_presave(UserInterface $user) {
     // entry with an empty one.
     $user->revision_log = $user->original->revision_log->value;
   }
+
+  // Check revision timestamp
+  if (!$user->get('revision_timestamp')->getValue()) {
+    $user->set('revision_timestamp', time());
+  }
 }
 
 /**
