@@ -176,6 +176,10 @@ function user_revision_form_user_form_builder($entity_type, UserInterface $user,
   if (!$form_state->isValueEmpty('revision') && $form_state->getValue('revision') != FALSE) {
     $user->setNewRevision();
     // If a new revision is created, save the current user as revision author.
+    $revision_timestamp = REQUEST_TIME;
+    if (!$revision_timestamp) {
+      $revision_timestamp = time();
+    }
     $user->set('revision_timestamp', REQUEST_TIME);
     $user->set('revision_uid', \Drupal::currentUser()->id());
   }
