@@ -12,7 +12,6 @@ use Drupal\Core\DependencyInjection\ContainerInjectionInterface;
 use Drupal\Core\Datetime\DateFormatter;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Drupal\user\UserInterface;
-use Drupal\Component\Utility\String;
 use Drupal\Component\Utility\Xss;
 use Drupal\Core\Url;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
@@ -86,8 +85,15 @@ class UserController extends ControllerBase implements ContainerInjectionInterfa
           );
           $row['revision']['data']['#markup'] = $this->t('!date by !username', array('!date' => $user->link($this->dateFormatter->format($revision->revision_timestamp->value, 'short')), '!username' => drupal_render($username)));
           $row['revision']['data']['#markup'] .= ($revision->revision_log->value != '') ? '<p class="revision-log">' . Xss::filter($revision->revision_log->value) . '</p>' : '';
-          $row['revision']['data']['class'] = array('revision-current');
-          $row['operations'] = array('data' => String::placeholder($this->t('current revision')), 'class' => array('revision-current'));
+          $row['revision']['class'] = array('revision-current');
+          $row['operations'] = array(
+            'data' => array(
+              '#prefix' => '<em>',
+              '#markup' => $this->t('Current revision'),
+              '#suffix' => '</em>'
+            ),
+            'class' => array('revision-current')
+          );
         }
         else {
           $links = array();
