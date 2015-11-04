@@ -122,6 +122,13 @@ function user_revision_form_user_form_alter(&$form, FormStateInterface $form_sta
   /* @var $user \Drupal\user\Entity\User */
   $user = $form_state->getFormObject()->getEntity();
 
+  if ($user->isNew()) {
+    if (isset($form['revision_log'])) {
+      unset($form['revision_log']);
+    }
+    return;
+  }
+
   // Add a revision_log field if the "Create new revision" option is checked,
   // or if the current user has the ability to check that option.
   $form['revision_information'] = array(
