@@ -8,6 +8,7 @@ use Drupal\Core\Entity\EntityTypeInterface;
 use Drupal\Core\Field\BaseFieldDefinition;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\user\UserInterface;
+use Drupal\Core\Entity\EntityInterface;
 
 /**
  * Implements hook_entity_type_alter().
@@ -262,4 +263,19 @@ function user_revision_ids(UserInterface $user) {
 function user_revision_count(UserInterface $user) {
   $entity_type = \Drupal::entityManager()->getStorage('user')->getEntityType();
   return db_query('SELECT COUNT(DISTINCT vid) FROM {' . $entity_type->getRevisionTable() . '} WHERE uid=:uid', array(':uid' => $user->id()))->fetchField();
+}
+
+/**
+ * Implements hook_entity_operation() for user entities.
+ */
+function user_revision_entity_operation(EntityInterface $entity) {
+  $operations = array();
+  if ($entity->getEntityTypeId() == 'user') {
+    $operations['revisions'] = array(
+      'title' => t('Revisions'),
+      'url' => \Drupal\Core\Url::fromRoute('entity.user.version_history', array('user' => $entity->id())),
+      'weight' => 50
+    );
+  }
+  return $operations;
 }
