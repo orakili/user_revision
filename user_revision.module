@@ -123,7 +123,7 @@ function user_revision_form_user_form_alter(&$form, FormStateInterface $form_sta
   /* @var $user \Drupal\user\Entity\User */
   $user = $form_state->getFormObject()->getEntity();
 
-  if ($user->isNew()) {
+  if ($user->isNew() || !isset($form['revision_log'])) {
     if (isset($form['revision_log'])) {
       unset($form['revision_log']);
     }
