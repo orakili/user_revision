@@ -34,8 +34,9 @@ function user_revision_install() {
   $entity_manager->onEntityTypeCreate($user_storage->getEntityType());
 
   $all_users = &drupal_static('user_revision_all_users', array());
-  foreach ($all_users as $user) {
+  foreach ($all_users as $id => $user) {
     $user_entity = UserEntity::create($user);
+    $user_entity->set('revision_uid', $id);
     $user_entity->save();
   }
   drupal_static_reset('user_revision_all_users');
