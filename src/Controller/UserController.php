@@ -99,13 +99,13 @@ class UserController extends ControllerBase implements ContainerInjectionInterfa
             '#template' => '{% trans %}{{ date }} by {{ username }}{% endtrans %}{% if message %}<p class="revision-log">{{ message }}</p>{% endif %}',
             '#context' => [
               'date' => $link,
-              'username' => $this->renderer->renderPlain($username),
+              'username' => drupal_render($username),
               'message' => ['#markup' => $revision->revision_log->value, '#allowed_tags' => Xss::getHtmlTagList()],
             ],
           ],
         ];
         // @todo Simplify once https://www.drupal.org/node/2334319 lands.
-        $this->renderer->addCacheableDependency($column['data'], $username);
+        // $this->renderer->addCacheableDependency($column['data'], $username);
         $row[] = $column;
 
         if ($vid == $user->getRevisionId()) {
