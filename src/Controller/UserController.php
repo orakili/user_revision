@@ -78,57 +78,75 @@ class UserController extends ControllerBase implements ContainerInjectionInterfa
         );
         $revision_author = $revision->revision_uid->entity;
 
+        $username = [
+          '#theme' => 'username',
+          '#account' => $revision_author,
+        ];
+
+        // Use revision link to link to revisions that are not active.
+        $date = $this->dateFormatter->format($revision->revision_timestamp->value, 'short');
         if ($vid == $user->getRevisionId()) {
-          $username = array(
-            '#theme' => 'username',
-            '#account' => $revision_author,
-          );
-          $row['revision']['data']['#markup'] = $this->t('!date by !username', array('!date' => $user->link($this->dateFormatter->format($revision->revision_timestamp->value, 'short')), '!username' => drupal_render($username)));
-          $row['revision']['data']['#markup'] .= ($revision->revision_log->value != '') ? '<p class="revision-log">' . Xss::filter($revision->revision_log->value) . '</p>' : '';
-          $row['revision']['class'] = array('revision-current');
-          $row['operations'] = array(
-            'data' => array(
-              '#prefix' => '<em>',
-              '#markup' => $this->t('Current revision'),
-              '#suffix' => '</em>'
-            ),
-            'class' => array('revision-current')
-          );
+          $link = $user->link($date);
         }
         else {
-          $links = array();
-          $username = array(
-            '#theme' => 'username',
-            '#account' => $revision_author,
-          );
-          $row['revision']['data']['#markup'] = $this->t('!date by !username', array('!date' => $this->l($this->dateFormatter->format($revision->revision_timestamp->value, 'short'), new Url('user.revision_show', array('user' => $user->id(), 'user_revision' => $vid))), '!username' => drupal_render($username)));
-          $row['revision']['data']['#markup'] .= ($revision->revision_log->value != '') ? '<p class="revision-log">' . Xss::filter($revision->revision_log->value) . '</p>' : '';
+          $link = $this->l($date, new Url('user.revision_show', array('user' => $user->id(), 'user_revision' => $vid)));
+        }
 
+        $row = [];
+        $column = [
+          'data' => [
+            '#type' => 'inline_template',
+            '#template' => '{% trans %}{{ date }} by {{ username }}{% endtrans %}{% if message %}<p class="revision-log">{{ message }}</p>{% endif %}',
+            '#context' => [
+              'date' => $link,
+              'username' => $this->renderer->renderPlain($username),
+              'message' => ['#markup' => $revision->revision_log->value, '#allowed_tags' => Xss::getHtmlTagList()],
+            ],
+          ],
+        ];
+        // @todo Simplify once https://www.drupal.org/node/2334319 lands.
+        $this->renderer->addCacheableDependency($column['data'], $username);
+        $row[] = $column;
+
+        if ($vid == $user->getRevisionId()) {
+          $row[] = [
+            'data' => [
+              '#prefix' => '<em>',
+              '#markup' => $this->t('Current revision'),
+              '#suffix' => '</em>',
+            ],
+          ];
+
+          $rows[] = [
+            'data' => $row,
+            'class' => ['revision-current'],
+          ];
+        }
+        else {
+          $links = [];
           if ($access_check->checkAccess($revision, $account, 'update')) {
-            $links['revert'] = array(
-              'title' => $this->t('Revert'),
+            $links['revert'] = [
+              'title' => $vid < $user->getRevisionId() ? $this->t('Revert') : $this->t('Set as current revision'),
               'url' => Url::fromRoute('user.revision_revert_confirm', ['user' => $user->id(), 'user_revision' => $vid]),
-            );
+            ];
           }
 
           if ($access_check->checkAccess($revision, $account, 'delete')) {
-            $links['delete'] = array(
+            $links['delete'] = [
               'title' => $this->t('Delete'),
               'url' => Url::fromRoute('user.revision_delete_confirm', ['user' => $user->id(), 'user_revision' => $vid]),
-            );
+            ];
           }
 
-          if ($links) {
-            $row['operations'] = array(
-              'data' => array(
-                '#type' => 'operations',
-                '#links' => $links,
-              ),
-            );
-          }
+          $row[] = [
+            'data' => [
+              '#type' => 'operations',
+              '#links' => $links,
+            ],
+          ];
+
+          $rows[] = $row;
         }
-
-        $rows[] = $row;
       }
     }
 
