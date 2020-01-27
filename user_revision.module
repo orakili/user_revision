@@ -21,6 +21,7 @@ function user_revision_entity_type_alter(array &$entity_types) {
   $entity_keys = $user->getKeys();
   $entity_keys['revision'] = 'vid';
   $user->set('entity_keys', $entity_keys);
+  $user->setLinkTemplate('revision', '/user/{user}/revisions/{user_revision}/view');
   $user->setLinkTemplate('version-history', '/user/{user}/revisions');
 }
 
