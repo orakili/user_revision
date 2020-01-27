@@ -128,39 +128,50 @@ function user_revision_form_user_form_alter(&$form, FormStateInterface $form_sta
     return;
   }
 
-  // Add a revision_log field if the "Create new revision" option is checked,
-  // or if the current user has the ability to check that option.
-  $form['revision_information'] = array(
-    '#type' => 'details',
-    '#title' => t('Revision information'),
-    // Open by default when "Create new revision" is checked.
-    '#open' => $config->get('user_revision_default_enabled'),
-    '#attributes' => array(
-      'class' => array('user-form-revision-information'),
-    ),
-    '#weight' => 20,
-    '#optional' => TRUE,
-  );
-
   $form['revision'] = array(
     '#type' => 'checkbox',
     '#title' => t('Create new revision'),
-    '#default_value' => $config->get('user_revision_default_enabled'),
-    '#access' => \Drupal::currentUser()->hasPermission('administer users'),
+    '#default_value' => $config->get('user_revision_default_enabled') ||
+      $config->get('user_revision_always_enabled'),
+    '#access' => \Drupal::currentUser()->hasPermission('administer users') &&
+      !$config->get('user_revision_always_enabled'),
     '#group' => 'revision_information',
   );
 
-  $form['revision_log'] += array(
-    '#states' => array(
-      'visible' => array(
-        ':input[name="revision"]' => array('checked' => TRUE),
-      ),
-    ),
-    '#group' => 'revision_information'
-  );
-
-  if (!$form['revision']['#access'] && !$form['revision']['#default_value']) {
+  if (!\Drupal::currentUser()->hasPermission('administer users') &&
+	(!$form['revision']['#default_value'] ||
+	 !$config->get('user_revision_user_log_enabled')
+	)
+     ) {
+    //Don't include the revision_log field if user is non-privileged, and the module
+    //is configured either not to create new revisions by default,
+    //or not to allow ordinary users to enter revision log messages.
     unset($form['revision_log']);
+  } else {
+    // Add a revision_information group to contain the "Create new revision" checkbox
+    // and the "Revision log message" text box - but only if at least one of these
+    // needs to be displayed.
+
+    $form['revision_information'] = array(
+      '#type' => 'details',
+      '#title' => t('Revision information'),
+      '#open' => $config->get('user_revision_default_open'),
+      '#attributes' => array(
+        'class' => array('user-form-revision-information'),
+      ),
+      '#weight' => 20,
+      '#optional' => TRUE,
+    );
+
+    //Only display the revision_log text box if the "Create new revision" option is checked
+    $form['revision_log'] += array(
+      '#states' => array(
+        'visible' => array(
+          ':input[name="revision"]' => array('checked' => TRUE),
+        ),
+      ),
+      '#group' => 'revision_information'
+    );
   }
 
   // Define entity builder
@@ -210,10 +221,37 @@ function user_revision_form_user_admin_settings_alter(&$form, FormStateInterface
     '#weight' => 0
   );
 
+  $form['revision']['revision_default_open'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Display revision information group initially open'),
+    '#default_value' => $config->get('user_revision_default_open'),
+  );
+
+  $form['revision']['revision_status'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Always create new revision'),
+    '#default_value' => $config->get('user_revision_always_enabled')
+  );
+
   $form['revision']['revision_default_status'] = array(
     '#type' => 'checkbox',
-    '#title' => t('Create new revision'),
-    '#default_value' => $config->get('user_revision_default_enabled')
+    '#title' => t('Create new revision by default'),
+    '#default_value' => $config->get('user_revision_default_enabled'),
+    '#states' => array(
+      'disabled' => array(':input[name="revision_status"]' => array('checked' => TRUE)),
+    )
+  );
+
+  $form['revision']['revision_user_log_status'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Allow ordinary users to enter revision log messages'),
+    '#default_value' => $config->get('user_revision_user_log_enabled'),
+    '#states' => array(
+      'disabled' => array(
+          ':input[name="revision_status"]' => array('checked' => FALSE),
+          ':input[name="revision_default_status"]' => array('checked' => FALSE)
+       ),
+    )
   );
 
   // Add submit handler to save revision configuration.
@@ -228,6 +266,9 @@ function user_revision_form_user_admin_settings_alter(&$form, FormStateInterface
 function user_revision_form_user_admin_settings_submit($form, FormStateInterface $form_state) {
   $config = \Drupal::configFactory()->getEditable('user_revision.settings');
   $config->set('user_revision_default_enabled', $form_state->getValue('revision_default_status'));
+  $config->set('user_revision_always_enabled', $form_state->getValue('revision_status'));
+  $config->set('user_revision_default_open', $form_state->getValue('revision_default_open'));
+  $config->set('user_revision_user_log_enabled', $form_state->getValue('revision_user_log_status'));
   $config->save();
 }
 
