@@ -1,10 +1,5 @@
 <?php
 
-/**
- * @file
- * Contains \Drupal\user_revision\Controller\UserController.
- */
-
 namespace Drupal\user_revision\Controller;
 
 use Drupal\Core\Controller\ControllerBase;

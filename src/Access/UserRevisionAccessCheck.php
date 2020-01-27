@@ -1,10 +1,5 @@
 <?php
 
-/**
- * @file
- * Contains \Drupal\user_revision\Access\UserRevisionAccessCheck.
- */
-
 namespace Drupal\user_revision\Access;
 
 use Drupal\Core\Routing\Access\AccessInterface;

@@ -1,10 +1,5 @@
 <?php
 
-/**
- * @file
- * Contains \Drupal\user_revision\Form\UserRevisionRevertForm.
- */
-
 namespace Drupal\user_revision\Form;
 
 use Drupal\Core\Form\ConfirmFormBase;
