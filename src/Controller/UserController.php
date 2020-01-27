@@ -84,7 +84,7 @@ class UserController extends ControllerBase implements ContainerInjectionInterfa
           $link = $user->link($date);
         }
         else {
-          $link = $this->l($date, new Url('user.revision_show', array('user' => $user->id(), 'user_revision' => $vid)));
+          $link = $this->l($date, new Url('entity.user.revision', array('user' => $user->id(), 'user_revision' => $vid)));
         }
 
         $row = [];

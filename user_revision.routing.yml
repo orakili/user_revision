@@ -7,8 +7,7 @@ entity.user.version_history:
     _access_user_revision: 'view'
   options:
     _admin_route: TRUE
-
-user.revision_show:
+entity.user.revision:
   path: '/user/{user}/revisions/{user_revision}/view'
   defaults:
     _controller: '\Drupal\user_revision\Controller\UserController::revisionShow'
