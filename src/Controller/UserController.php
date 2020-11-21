@@ -2,6 +2,7 @@
 
 namespace Drupal\user_revision\Controller;
 
+use Drupal\Core\Link;
 use Drupal\Core\Controller\ControllerBase;
 use Drupal\Core\DependencyInjection\ContainerInjectionInterface;
 use Drupal\Core\Datetime\DateFormatter;
@@ -54,8 +55,10 @@ class UserController extends ControllerBase implements ContainerInjectionInterfa
    */
   public function revisionOverview(UserInterface $user) {
     $account = $this->currentUser();
-    $user_storage = $this->entityManager()->getStorage('user');
-    $access_check = new UserRevisionAccessCheck($this->entityManager());
+    $user_storage = \Drupal::service('entity_type.manager')->getStorage('user');
+    // TODO: Drupal Rector Notice: Please delete the following comment after you've made any necessary changes.
+    // We are assuming that we want to use the `$this->entityTypeManager` injected service since no method was called here directly. Please confirm this is the case. If another service is needed, you may need to inject that yourself. See https://www.drupal.org/node/2549139 for more information.
+    $access_check = new UserRevisionAccessCheck($this->entityTypeManager());
 
     $build = array();
     $build['#title'] = $this->t('Revisions for %title', array('%title' => $user->label()));
@@ -81,10 +84,14 @@ class UserController extends ControllerBase implements ContainerInjectionInterfa
         // Use revision link to link to revisions that are not active.
         $date = $this->dateFormatter->format($revision->revision_timestamp->value, 'short');
         if ($vid == $user->getRevisionId()) {
-          $link = $user->link($date);
+          // TODO: Drupal Rector Notice: Please delete the following comment after you've made any necessary changes.
+          // Please confirm that `$user` is an instance of `\Drupal\Core\Entity\EntityInterface`. Only the method name and not the class name was checked for this replacement, so this may be a false positive.
+          $link = $user->toLink($date)->toString();
         }
         else {
-          $link = $this->l($date, new Url('entity.user.revision', array('user' => $user->id(), 'user_revision' => $vid)));
+          // TODO: Drupal Rector Notice: Please delete the following comment after you've made any necessary changes.
+          // Please manually remove the `use LinkGeneratorTrait;` statement from this class.
+          $link = Link::fromTextAndUrl($date, new Url('entity.user.revision', array('user' => $user->id(), 'user_revision' => $vid)));
         }
 
         $row = [];
@@ -94,7 +101,7 @@ class UserController extends ControllerBase implements ContainerInjectionInterfa
             '#template' => '{% trans %}{{ date }} by {{ username }}{% endtrans %}{% if message %}<p class="revision-log">{{ message }}</p>{% endif %}',
             '#context' => [
               'date' => $link,
-              'username' => drupal_render($username),
+              'username' => \Drupal::service('renderer')->render($username),
               'message' => ['#markup' => $revision->revision_log->value, '#allowed_tags' => Xss::getHtmlTagList()],
             ],
           ],
@@ -169,12 +176,12 @@ class UserController extends ControllerBase implements ContainerInjectionInterfa
    *   An array suitable for drupal_render().
    */
   public function revisionShow($user, $user_revision) {
-    $user_history = $this->entityManager()->getStorage('user')->loadRevision($user_revision);
+    $user_history = \Drupal::service('entity_type.manager')->getStorage('user')->loadRevision($user_revision);
     if ($user_history->id() != $user) {
       throw new NotFoundHttpException;
     }
     /* @var $view_builder \Drupal\Core\Entity\EntityViewBuilder */
-    $view_builder = $this->entityManager()->getViewBuilder($user_history->getEntityTypeId());
+    $view_builder = \Drupal::service('entity_type.manager')->getViewBuilder($user_history->getEntityTypeId());
     return $view_builder->view($user_history);
   }
 
@@ -188,8 +195,8 @@ class UserController extends ControllerBase implements ContainerInjectionInterfa
    *   The page title.
    */
   public function revisionPageTitle($user_revision) {
-    $user = $this->entityManager()->getStorage('user')->loadRevision($user_revision);
-    return $this->t('Revision of %title from %date', array('%title' => $user->label(), '%date' => format_date($user->get('revision_timestamp')->value)));
+    $user = \Drupal::service('entity_type.manager')->getStorage('user')->loadRevision($user_revision);
+    return $this->t('Revision of %title from %date', array('%title' => $user->label(), '%date' => \Drupal::service('date.formatter')->format($user->get('revision_timestamp')->value)));
   }
 
 }

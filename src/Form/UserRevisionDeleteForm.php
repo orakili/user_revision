@@ -59,7 +59,7 @@ class UserRevisionDeleteForm extends ConfirmFormBase {
    * {@inheritdoc}
    */
   public function getQuestion() {
-    return t('Are you sure you want to delete the revision from %revision-date?', array('%revision-date' => format_date($this->revision->revision_timestamp->value)));
+    return t('Are you sure you want to delete the revision from %revision-date?', array('%revision-date' => \Drupal::service('date.formatter')->format($this->revision->revision_timestamp->value)));
   }
 
   /**
@@ -94,7 +94,7 @@ class UserRevisionDeleteForm extends ConfirmFormBase {
     $this->userStorage->deleteRevision($this->revision->getRevisionId());
 
     $this->logger('user_revision')->notice('user: deleted %name revision %revision.', array('%name' => $this->revision->label(), '%revision' => $this->revision->getRevisionId()));
-    drupal_set_message(t('Revision from %revision-date of user %name has been deleted.', array('%revision-date' => format_date($this->revision->revision_timestamp->value), '%name' => $this->revision->label())));
+    $this->messenger()->addStatus(t('Revision from %revision-date of user %name has been deleted.', array('%revision-date' => \Drupal::service('date.formatter')->format($this->revision->revision_timestamp->value), '%name' => $this->revision->label())));
     $form_state->setRedirect(
       'entity.user.canonical', array('user' => $this->revision->id())
     );

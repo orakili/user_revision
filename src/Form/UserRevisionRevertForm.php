@@ -58,7 +58,7 @@ class UserRevisionRevertForm extends ConfirmFormBase {
    * {@inheritdoc}
    */
   public function getQuestion() {
-    return t('Are you sure you want to revert to the revision from %revision-date?', array('%revision-date' => format_date($this->revision->revision_timestamp->value)));
+    return t('Are you sure you want to revert to the revision from %revision-date?', array('%revision-date' => \Drupal::service('date.formatter')->format($this->revision->revision_timestamp->value)));
   }
 
   /**
@@ -105,11 +105,11 @@ class UserRevisionRevertForm extends ConfirmFormBase {
     // original one for the confirmation message.
     $original_revision_timestamp = $this->revision->revision_timestamp->value;
 
-    $this->revision->revision_log = t('Copy of the revision from %date.', array('%date' => format_date($original_revision_timestamp)));
+    $this->revision->revision_log = t('Copy of the revision from %date.', array('%date' => \Drupal::service('date.formatter')->format($original_revision_timestamp)));
     $this->revision->save();
 
     $this->logger('user_revision')->notice('user: reverted %name revision %revision.', array('%name' => $this->revision->label(), '%revision' => $this->revision->getRevisionId()));
-    drupal_set_message(t('User %name has been reverted back to the revision from %revision-date.', array('%name' => $this->revision->label(), '%revision-date' => format_date($original_revision_timestamp))));
+    $this->messenger()->addStatus(t('User %name has been reverted back to the revision from %revision-date.', array('%name' => $this->revision->label(), '%revision-date' => \Drupal::service('date.formatter')->format($original_revision_timestamp))));
     $form_state->setRedirect(
       'entity.user.version_history', array('user' => $this->revision->id())
     );

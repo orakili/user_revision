@@ -1,5 +1,6 @@
 <?php
 
+use Drupal\Core\Url;
 /**
  * @file
  * User Revision module.
@@ -199,7 +200,7 @@ function user_revision_form_user_form_builder($entity_type, UserInterface $user,
   if (!$form_state->isValueEmpty('revision') && $form_state->getValue('revision') != FALSE) {
     $user->setNewRevision();
     // If a new revision is created, save the current user as revision author.
-    $user->set('revision_timestamp', REQUEST_TIME);
+    $user->set('revision_timestamp', \Drupal::time()->getRequestTime());
     $user->set('revision_uid', \Drupal::currentUser()->id());
   }
   else {
@@ -276,7 +277,6 @@ function user_revision_form_user_admin_settings_submit($form, FormStateInterface
 /**
  * Internal functions.
  */
-
 /**
  * Returns a list of user revision IDs for a specific user.
  *
@@ -287,8 +287,10 @@ function user_revision_form_user_admin_settings_submit($form, FormStateInterface
  *   User revision IDs (in ascending order).
  */
 function user_revision_ids(UserInterface $user) {
-  $entity_type = \Drupal::entityManager()->getStorage('user')->getEntityType();
-  return db_query('SELECT vid FROM {' . $entity_type->getRevisionTable() . '} WHERE uid=:uid ORDER BY vid', array(':uid' => $user->id()))->fetchCol();
+  $entity_type = \Drupal::service('entity_type.manager')->getStorage('user')->getEntityType();
+  // TODO: Drupal Rector Notice: Please delete the following comment after you've made any necessary changes.
+  // You will need to use `\Drupal\core\Database\Database::getConnection()` if you do not yet have access to the container here.
+  return \Drupal::database()->query('SELECT vid FROM {' . $entity_type->getRevisionTable() . '} WHERE uid=:uid ORDER BY vid', array(':uid' => $user->id()))->fetchCol();
 }
 
 /**
@@ -301,8 +303,10 @@ function user_revision_ids(UserInterface $user) {
  *   User revision count.
  */
 function user_revision_count(UserInterface $user) {
-  $entity_type = \Drupal::entityManager()->getStorage('user')->getEntityType();
-  return db_query('SELECT COUNT(DISTINCT vid) FROM {' . $entity_type->getRevisionTable() . '} WHERE uid=:uid', array(':uid' => $user->id()))->fetchField();
+  $entity_type = \Drupal::service('entity_type.manager')->getStorage('user')->getEntityType();
+  // TODO: Drupal Rector Notice: Please delete the following comment after you've made any necessary changes.
+  // You will need to use `\Drupal\core\Database\Database::getConnection()` if you do not yet have access to the container here.
+  return \Drupal::database()->query('SELECT COUNT(DISTINCT vid) FROM {' . $entity_type->getRevisionTable() . '} WHERE uid=:uid', array(':uid' => $user->id()))->fetchField();
 }
 
 /**
@@ -313,7 +317,7 @@ function user_revision_entity_operation(EntityInterface $entity) {
   if ($entity->getEntityTypeId() == 'user') {
     $operations['revisions'] = array(
       'title' => t('Revisions'),
-      'url' => \Drupal\Core\Url::fromRoute('entity.user.version_history', array('user' => $entity->id())),
+      'url' => Url::fromRoute('entity.user.version_history', array('user' => $entity->id())),
       'weight' => 50
     );
   }
