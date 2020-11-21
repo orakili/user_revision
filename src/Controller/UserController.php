@@ -84,13 +84,9 @@ class UserController extends ControllerBase implements ContainerInjectionInterfa
         // Use revision link to link to revisions that are not active.
         $date = $this->dateFormatter->format($revision->revision_timestamp->value, 'short');
         if ($vid == $user->getRevisionId()) {
-          // TODO: Drupal Rector Notice: Please delete the following comment after you've made any necessary changes.
-          // Please confirm that `$user` is an instance of `\Drupal\Core\Entity\EntityInterface`. Only the method name and not the class name was checked for this replacement, so this may be a false positive.
           $link = $user->toLink($date)->toString();
         }
         else {
-          // TODO: Drupal Rector Notice: Please delete the following comment after you've made any necessary changes.
-          // Please manually remove the `use LinkGeneratorTrait;` statement from this class.
           $link = Link::fromTextAndUrl($date, new Url('entity.user.revision', array('user' => $user->id(), 'user_revision' => $vid)));
         }
 

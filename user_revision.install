@@ -18,11 +18,9 @@ function user_revision_module_preinstall($module) {
     }
 
     /* @var $user_storage \Drupal\Core\Entity\Sql\SqlContentEntityStorage */
-    // TODO: Drupal Rector Notice: Please delete the following comment after you've made any necessary changes.
-    // We are assuming that we want to use the `entity_type.manager` service since no method was called here directly. Please confirm this is the case. See https://www.drupal.org/node/2549139 for more information.
-    $entity_manager = \Drupal::service('entity_type.manager');
-    $user_storage = $entity_manager->getStorage('user');
-    $entity_manager->onEntityTypeDelete($user_storage->getEntityType());
+    $entity_type_manager = \Drupal::service('entity_type.manager');
+    $user_storage = $entity_type_manager->getStorage('user');
+    $entity_type_manager->onEntityTypeDelete($user_storage->getEntityType());
   }
 }
 
@@ -31,11 +29,9 @@ function user_revision_module_preinstall($module) {
  */
 function user_revision_install() {
   /* @var $user_storage \Drupal\Core\Entity\Sql\SqlContentEntityStorage */
-  // TODO: Drupal Rector Notice: Please delete the following comment after you've made any necessary changes.
-  // We are assuming that we want to use the `entity_type.manager` service since no method was called here directly. Please confirm this is the case. See https://www.drupal.org/node/2549139 for more information.
-  $entity_manager = \Drupal::service('entity_type.manager');
-  $user_storage = $entity_manager->getStorage('user');
-  $entity_manager->onEntityTypeCreate($user_storage->getEntityType());
+  $entity_type_manager = \Drupal::service('entity_type.manager');
+  $user_storage = $entity_type_manager->getStorage('user');
+  $entity_type_manager->onEntityTypeCreate($user_storage->getEntityType());
 
   $all_users = &drupal_static('user_revision_all_users', array());
   foreach ($all_users as $id => $user) {
