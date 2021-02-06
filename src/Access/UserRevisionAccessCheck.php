@@ -2,8 +2,8 @@
 
 namespace Drupal\user_revision\Access;
 
+use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Routing\Access\AccessInterface;
-use Drupal\Core\Entity\EntityManagerInterface;
 use Symfony\Component\Routing\Route;
 use Drupal\Core\Session\AccountInterface;
 use Drupal\user\UserInterface;
@@ -34,8 +34,17 @@ class UserRevisionAccessCheck implements AccessInterface {
    * @param \Drupal\Core\Entity\EntityManagerInterface $entity_manager
    *   The entity manager.
    */
-  public function __construct(EntityManagerInterface $entity_manager) {
-    $this->userStorage = $entity_manager->getStorage('user');
+
+  /**
+   * UserRevisionAccessCheck constructor.
+   *
+   * @param \Drupal\Core\Entity\EntityTypeManagerInterface $entity_type_manager
+   *
+   * @throws \Drupal\Component\Plugin\Exception\InvalidPluginDefinitionException
+   * @throws \Drupal\Component\Plugin\Exception\PluginNotFoundException
+   */
+  public function __construct(EntityTypeManagerInterface $entity_type_manager) {
+    $this->userStorage = $entity_type_manager->getStorage('user');
   }
 
   /**

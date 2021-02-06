@@ -26,13 +26,23 @@ class UserController extends ControllerBase implements ContainerInjectionInterfa
   protected $dateFormatter;
 
   /**
+   * The access_check.user.revision service.
+   *
+   * @var \Drupal\user_revision\Access\UserRevisionAccessCheck
+   */
+  protected $userRevisionAccessCheck;
+
+  /**
    * Constructs a UserController object.
    *
    * @param \Drupal\Core\Datetime\DateFormatter $date_formatter
    *   The date formatter service.
    */
-  public function __construct(DateFormatter $date_formatter) {
+  public function __construct(DateFormatter $date_formatter,
+                              UserRevisionAccessCheck $accessCheck ) {
     $this->dateFormatter = $date_formatter;
+    $this->userRevisionAccessCheck = $accessCheck;
+    $this->entityTypeManager();
   }
 
   /**
@@ -40,7 +50,8 @@ class UserController extends ControllerBase implements ContainerInjectionInterfa
    */
   public static function create(ContainerInterface $container) {
     return new static(
-      $container->get('date.formatter')
+      $container->get('date.formatter'),
+      $container->get('access_check.user.revision')
     );
   }
 
@@ -52,13 +63,14 @@ class UserController extends ControllerBase implements ContainerInjectionInterfa
    *
    * @return array
    *   An array as expected by drupal_render().
+   *
+   * @throws \Drupal\Component\Plugin\Exception\InvalidPluginDefinitionException
+   * @throws \Drupal\Component\Plugin\Exception\PluginNotFoundException
+   * @throws \Drupal\Core\Entity\EntityMalformedException
    */
   public function revisionOverview(UserInterface $user) {
     $account = $this->currentUser();
-    $user_storage = \Drupal::service('entity_type.manager')->getStorage('user');
-    // TODO: Drupal Rector Notice: Please delete the following comment after you've made any necessary changes.
-    // We are assuming that we want to use the `$this->entityTypeManager` injected service since no method was called here directly. Please confirm this is the case. If another service is needed, you may need to inject that yourself. See https://www.drupal.org/node/2549139 for more information.
-    $access_check = new UserRevisionAccessCheck($this->entityTypeManager());
+    $user_storage = $this->entityTypeManager->getStorage('user');
 
     $build = array();
     $build['#title'] = $this->t('Revisions for %title', array('%title' => $user->label()));
@@ -70,10 +82,6 @@ class UserController extends ControllerBase implements ContainerInjectionInterfa
 
     foreach (array_reverse($vids) as $vid) {
       if ($revision = $user_storage->loadRevision($vid)) {
-        $row = array(
-          'revision' => array('data' => array()),
-          'operations' => array('data' => array())
-        );
         $revision_author = $revision->revision_uid->entity;
 
         $username = [
@@ -87,8 +95,10 @@ class UserController extends ControllerBase implements ContainerInjectionInterfa
           $link = $user->toLink($date)->toString();
         }
         else {
-          $link = Link::fromTextAndUrl($date, new Url('entity.user.revision', array('user' => $user->id(), 'user_revision' => $vid)));
+          $link = Link::fromTextAndUrl($date, new Url('entity.user.revision', array('user' => $user->id(), 'user_revision' => $vid)))->toString();
         }
+
+
 
         $row = [];
         $column = [
@@ -122,14 +132,14 @@ class UserController extends ControllerBase implements ContainerInjectionInterfa
         }
         else {
           $links = [];
-          if ($access_check->checkAccess($revision, $account, 'update')) {
+          if ($this->userRevisionAccessCheck->checkAccess($revision, $account, 'update')) {
             $links['revert'] = [
               'title' => $vid < $user->getRevisionId() ? $this->t('Revert') : $this->t('Set as current revision'),
               'url' => Url::fromRoute('user.revision_revert_confirm', ['user' => $user->id(), 'user_revision' => $vid]),
             ];
           }
 
-          if ($access_check->checkAccess($revision, $account, 'delete')) {
+          if ($this->userRevisionAccessCheck->checkAccess($revision, $account, 'delete')) {
             $links['delete'] = [
               'title' => $this->t('Delete'),
               'url' => Url::fromRoute('user.revision_delete_confirm', ['user' => $user->id(), 'user_revision' => $vid]),
@@ -170,14 +180,17 @@ class UserController extends ControllerBase implements ContainerInjectionInterfa
    *
    * @return array
    *   An array suitable for drupal_render().
+   *
+   * @throws \Drupal\Component\Plugin\Exception\InvalidPluginDefinitionException
+   * @throws \Drupal\Component\Plugin\Exception\PluginNotFoundException
    */
   public function revisionShow($user, $user_revision) {
-    $user_history = \Drupal::service('entity_type.manager')->getStorage('user')->loadRevision($user_revision);
+    $user_history = $this->entityTypeManager->getStorage('user')->loadRevision($user_revision);
     if ($user_history->id() != $user) {
       throw new NotFoundHttpException;
     }
     /* @var $view_builder \Drupal\Core\Entity\EntityViewBuilder */
-    $view_builder = \Drupal::service('entity_type.manager')->getViewBuilder($user_history->getEntityTypeId());
+    $view_builder = $this->entityTypeManager->getViewBuilder($user_history->getEntityTypeId());
     return $view_builder->view($user_history);
   }
 
@@ -189,10 +202,14 @@ class UserController extends ControllerBase implements ContainerInjectionInterfa
    *
    * @return string
    *   The page title.
+   *
+   * @return \Drupal\Core\StringTranslation\TranslatableMarkup
+   * @throws \Drupal\Component\Plugin\Exception\InvalidPluginDefinitionException
+   * @throws \Drupal\Component\Plugin\Exception\PluginNotFoundException
    */
   public function revisionPageTitle($user_revision) {
-    $user = \Drupal::service('entity_type.manager')->getStorage('user')->loadRevision($user_revision);
-    return $this->t('Revision of %title from %date', array('%title' => $user->label(), '%date' => \Drupal::service('date.formatter')->format($user->get('revision_timestamp')->value)));
+    $user = $this->entityTypeManager->getStorage('user')->loadRevision($user_revision);
+    return $this->t('Revision of %title from %date', array('%title' => $user->label(), '%date' => $this->dateFormatter->format($user->get('revision_timestamp')->value)));
   }
 
 }
