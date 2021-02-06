@@ -4,7 +4,7 @@
  * @file
  * Install, update and uninstall functions for the user revision module.
  */
-use Drupal\user\Entity\User as UserEntity;
+use Drupal\user\Entity\User;
 use Drupal\Core\Entity\EntityInterface;
 
 /**
