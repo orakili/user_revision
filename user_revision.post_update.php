@@ -41,3 +41,19 @@ function user_revision_post_update_fix1_for_user_revision_table(&$sandbox) {
 
   $definition_update_manager->updateFieldableEntityType($entity_type, $field_storage_definitions, $sandbox);
 }
+
+/**
+ * Make base field "changed" revisionable.
+ */
+function user_revision_post_update_NAME(&$sandbox) {
+  $definition_update_manager = \Drupal::entityDefinitionUpdateManager();
+  $entity_type = $definition_update_manager->getEntityType('user');
+
+  /** @var \Drupal\Core\Entity\EntityLastInstalledSchemaRepositoryInterface $last_installed_schema_repository */
+  $last_installed_schema_repository = \Drupal::service('entity.last_installed_schema.repository');
+  $field_storage_definitions = $last_installed_schema_repository->getLastInstalledFieldStorageDefinitions('user');
+
+  $field_storage_definitions['changed']->setRevisionable(TRUE);
+
+  $definition_update_manager->updateFieldableEntityType($entity_type, $field_storage_definitions, $sandbox);
+}

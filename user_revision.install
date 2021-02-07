@@ -44,7 +44,7 @@ function user_revision_install() {
   // revisionable entity type.
   // @see user_revision_entity_base_field_info_alter
   // @todo Make 'changed' revisionable (node and term have it).
-  $non_revisionable_fields = array('uid', 'uuid', 'init', 'created', 'changed', 'access', 'login', 'vid');
+  $non_revisionable_fields = array('uid', 'uuid', 'init', 'created', 'access', 'login', 'vid');
   foreach ($field_storage_definitions as $field_name => $field) {
     if (array_search($field_name, $non_revisionable_fields) === FALSE) {
       $field->setRevisionable(TRUE);
