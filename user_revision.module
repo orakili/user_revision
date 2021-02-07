@@ -8,6 +8,7 @@ use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Entity\EntityTypeInterface;
 use Drupal\Core\Field\BaseFieldDefinition;
 use Drupal\Core\Form\FormStateInterface;
+use Drupal\Core\StringTranslation\TranslatableMarkup;
 use Drupal\user\UserInterface;
 use Drupal\Core\Url;
 
@@ -34,34 +35,51 @@ function user_revision_entity_base_field_info(EntityTypeInterface $entity_type) 
     $fields = array();
 
     $fields['vid'] = BaseFieldDefinition::create('integer')
-      ->setLabel(t('Revision ID'))
-      ->setDescription(t('The user revision ID.'))
+      ->setName('revision_id')
+      ->setTargetEntityTypeId('user')
+      ->setTargetBundle(NULL)
+      ->setLabel(new TranslatableMarkup('Revision ID'))
+      ->setDescription(new TranslatableMarkup('The user revision ID.'))
       ->setReadOnly(TRUE)
-      ->setSetting('unsigned', TRUE);
+      ->setSetting('unsigned', TRUE)
+    ;
 
     $fields['revision_timestamp'] = BaseFieldDefinition::create('created')
-      ->setLabel(t('Revision timestamp'))
-      ->setDescription(t('The time that the current revision was created.'))
-      ->setRevisionable(TRUE);
+      ->setName('revision_timestamp')
+      ->setTargetEntityTypeId('user')
+      ->setTargetBundle(NULL)
+      ->setLabel(new TranslatableMarkup('Revision timestamp'))
+      ->setDescription(new TranslatableMarkup('The time that the current revision was created.'))
+      ->setRevisionable(TRUE)
+    ;
 
     $fields['revision_uid'] = BaseFieldDefinition::create('entity_reference')
-      ->setLabel(t('Revision user ID'))
-      ->setDescription(t('The user ID of the author of the current revision.'))
+      ->setName('revision_uid')
+      ->setTargetEntityTypeId('user')
+      ->setTargetBundle(NULL)
+      ->setLabel(new TranslatableMarkup('Revision user ID'))
+      ->setDescription(new TranslatableMarkup('The user ID of the author of the current revision.'))
       ->setSetting('target_type', 'user')
-      ->setRevisionable(TRUE);
+      ->setRevisionable(TRUE)
+    ;
 
     $fields['revision_log'] = BaseFieldDefinition::create('string_long')
+      ->setName('revision_log')
+      ->setTargetEntityTypeId('user')
+      ->setTargetBundle(NULL)
+      ->setDefaultValue('')
       ->setLabel(t('Revision log message'))
       ->setDescription(t('Briefly describe the changes you have made.'))
       ->setRevisionable(TRUE)
       ->setTranslatable(TRUE)
       ->setDisplayOptions('form', array(
-      'type' => 'string_textarea',
-      'weight' => 25,
-      'settings' => array(
-        'rows' => 4,
-      ),
-    ));
+        'type' => 'string_textarea',
+        'weight' => 25,
+        'settings' => array(
+          'rows' => 4,
+        ),
+      ))
+    ;
 
     return $fields;
   }
@@ -72,9 +90,9 @@ function user_revision_entity_base_field_info(EntityTypeInterface $entity_type) 
  */
 function user_revision_entity_base_field_info_alter(&$fields, EntityTypeInterface $entity_type) {
   if ($entity_type->id() == 'user') {
-    $unused_fields = array('uid', 'uuid', 'init', 'created', 'changed', 'access', 'login', 'vid');
+    $non_revisionable_fields = array('uid', 'uuid', 'init', 'created', 'changed', 'access', 'login', 'vid');
     foreach ($fields as $field_name => $field) {
-      if (array_search($field_name, $unused_fields) === FALSE) {
+      if (array_search($field_name, $non_revisionable_fields) === FALSE) {
         $field->setRevisionable(TRUE);
       }
     }

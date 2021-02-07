@@ -4,62 +4,157 @@
  * @file
  * Install, update and uninstall functions for the user revision module.
  */
-use Drupal\user\Entity\User;
-use Drupal\Core\Entity\EntityInterface;
 
-/**
- * Implements hook_module_preinstall().
- */
-function user_revision_module_preinstall($module) {
-  if ($module == 'user_revision') {
-    $all_users = &drupal_static('user_revision_all_users', array());
-    foreach (User::loadMultiple() as $user) {
-      $all_users[$user->id()] = $user->toArray();
-    }
-
-    /* @var $user_storage \Drupal\Core\Entity\Sql\SqlContentEntityStorage */
-    $entity_type_manager = \Drupal::service('entity_type.manager');
-    $user_storage = $entity_type_manager->getStorage('user');
-    $entity_type_manager->onEntityTypeDelete($user_storage->getEntityType());
-  }
-}
+use Drupal\Core\Field\BaseFieldDefinition;
+use Drupal\Core\StringTranslation\TranslatableMarkup;
 
 /**
  * Implements hook_install().
+ *
+ * Update user entity type to be revisionable.
+ * @see \taxonomy_post_update_make_taxonomy_term_revisionable
+ * But we need this in install.
  */
 function user_revision_install() {
-  /* @var $user_storage \Drupal\Core\Entity\Sql\SqlContentEntityStorage */
-  $entity_type_manager = \Drupal::service('entity_type.manager');
-  $user_storage = $entity_type_manager->getStorage('user');
-  $entity_type_manager->onEntityTypeCreate($user_storage->getEntityType());
+  $definition_update_manager = \Drupal::entityDefinitionUpdateManager();
+  $entity_type = $definition_update_manager->getEntityType('user');
 
-  $all_users = &drupal_static('user_revision_all_users', array());
-  foreach ($all_users as $id => $user) {
-    $user_entity = User::create($user);
-    $user_entity->set('revision_uid', $id);
-    $user_entity->save();
-  }
-  drupal_static_reset('user_revision_all_users');
-}
+  /** @var \Drupal\Core\Entity\EntityLastInstalledSchemaRepositoryInterface $last_installed_schema_repository */
+  $last_installed_schema_repository = \Drupal::service('entity.last_installed_schema.repository');
+  $field_storage_definitions = $last_installed_schema_repository->getLastInstalledFieldStorageDefinitions('user');
 
-/**
- * Implements hook_entity_presave().
- */
-function user_revision_entity_presave(EntityInterface $entity) {
-  if ($entity->getEntityTypeId() == 'user') {
-    $all_users = &drupal_static('user_revision_all_users', array());
-    if (isset($all_users[$entity->id()]) && isset($all_users[$entity->id()]['pass'])) {
-      $entity->set('pass', current($all_users[$entity->id()]['pass'])['value']);
-    }
-    if (isset($all_users[$entity->id()]) && isset($all_users[$entity->id()]['changed'])) {
-      $entity->set('changed', current($all_users[$entity->id()]['changed'])['value']);
+  // Update the entity type definition.
+  $entity_keys = $entity_type->getKeys();
+  $entity_keys['revision'] = 'vid';
+  $entity_keys['revision_translation_affected'] = 'revision_translation_affected';
+  $entity_type->set('entity_keys', $entity_keys);
+
+  $entity_type->set('revision_table', 'user_revision');
+  $entity_type->set('revision_data_table', 'user_field_revision');
+
+  $revision_metadata_keys = [
+    'revision_default' => 'revision_default',
+    'revision_user' => 'revision_uid',
+    'revision_created' => 'revision_created',
+    'revision_log_message' => 'revision_log',
+  ];
+  $entity_type->set('revision_metadata_keys', $revision_metadata_keys);
+
+  // Update the field storage definitions and add the new ones required by a
+  // revisionable entity type.
+  // @see user_revision_entity_base_field_info_alter
+  // @todo Make 'changed' revisionable (node and term have it).
+  $non_revisionable_fields = array('uid', 'uuid', 'init', 'created', 'changed', 'access', 'login', 'vid');
+  foreach ($field_storage_definitions as $field_name => $field) {
+    if (array_search($field_name, $non_revisionable_fields) === FALSE) {
+      $field->setRevisionable(TRUE);
     }
   }
+
+  // @see \user_revision_entity_base_field_info
+  $field_storage_definitions['vid'] = BaseFieldDefinition::create('integer')
+    ->setName('revision_id')
+    ->setTargetEntityTypeId('user')
+    ->setTargetBundle(NULL)
+    ->setLabel(new TranslatableMarkup('Revision ID'))
+    ->setDescription(new TranslatableMarkup('The user revision ID.'))
+    ->setReadOnly(TRUE)
+    ->setSetting('unsigned', TRUE)
+  ;
+
+  $field_storage_definitions['revision_timestamp'] = BaseFieldDefinition::create('created')
+    ->setName('revision_timestamp')
+    ->setTargetEntityTypeId('user')
+    ->setTargetBundle(NULL)
+    ->setLabel(new TranslatableMarkup('Revision timestamp'))
+    ->setDescription(new TranslatableMarkup('The time that the current revision was created.'))
+    ->setRevisionable(TRUE)
+  ;
+
+  $field_storage_definitions['revision_uid'] = BaseFieldDefinition::create('entity_reference')
+    ->setName('revision_uid')
+    ->setTargetEntityTypeId('user')
+    ->setTargetBundle(NULL)
+    ->setLabel(new TranslatableMarkup('Revision user ID'))
+    ->setDescription(new TranslatableMarkup('The user ID of the author of the current revision.'))
+    ->setSetting('target_type', 'user')
+    ->setRevisionable(TRUE)
+  ;
+
+  $field_storage_definitions['revision_log'] = BaseFieldDefinition::create('string_long')
+    ->setName('revision_log')
+    ->setTargetEntityTypeId('user')
+    ->setTargetBundle(NULL)
+    ->setDefaultValue('')
+    ->setLabel(t('Revision log message'))
+    ->setDescription(t('Briefly describe the changes you have made.'))
+    ->setRevisionable(TRUE)
+    ->setTranslatable(TRUE)
+    ->setDisplayOptions('form', array(
+      'type' => 'string_textarea',
+      'weight' => 25,
+      'settings' => array(
+        'rows' => 4,
+      ),
+    ))
+  ;
+
+  // @see user_revision_post_update_fix1_for_user_revision_table
+  $field_storage_definitions['revision_default'] = BaseFieldDefinition::create('boolean')
+    ->setName('revision_default')
+    ->setTargetEntityTypeId('user')
+    ->setTargetBundle(NULL)
+    ->setLabel(new TranslatableMarkup('Default revision'))
+    ->setDescription(new TranslatableMarkup('A flag indicating whether this was a default revision when it was saved.'))
+    ->setStorageRequired(TRUE)
+    ->setInternal(TRUE)
+    ->setTranslatable(FALSE)
+    ->setRevisionable(TRUE);
+
+  // @see user_revision_post_update_fix1_for_user_revision_table
+  $field_storage_definitions['revision_translation_affected'] = BaseFieldDefinition::create('boolean')
+    ->setName('revision_translation_affected')
+    ->setTargetEntityTypeId('user')
+    ->setTargetBundle(NULL)
+    ->setLabel(new TranslatableMarkup('Revision translation affected'))
+    ->setDescription(new TranslatableMarkup('Indicates if the last edit of a translation belongs to current revision.'))
+    ->setReadOnly(TRUE)
+    ->setRevisionable(TRUE)
+    ->setTranslatable(TRUE);
+
+  // @fixme Add batch processing.
+  // @link https://www.drupal.org/forum/support/module-development-and-code-questions/2015-07-17/use-batch-api-in-hook_install
+  $definition_update_manager->updateFieldableEntityType($entity_type, $field_storage_definitions, $sandbox);
 }
 
 /**
  * Implements hook_uninstall().
+ *
+ * Update user entity type to not be revisionable.
  */
 function user_revision_uninstall() {
-  throw new \RuntimeException('This module cannot be uninstalled.');
+  $definition_update_manager = \Drupal::entityDefinitionUpdateManager();
+  $entity_type = $definition_update_manager->getEntityType('user');
+
+  /** @var \Drupal\Core\Entity\EntityLastInstalledSchemaRepositoryInterface $last_installed_schema_repository */
+  $last_installed_schema_repository = \Drupal::service('entity.last_installed_schema.repository');
+  $field_storage_definitions = $last_installed_schema_repository->getLastInstalledFieldStorageDefinitions('user');
+
+  // Update the entity type definition.
+  $entity_keys = $entity_type->getKeys();
+  unset($entity_keys['revision']);
+  unset($entity_keys['revision_translation_affected']);
+  $entity_type->set('entity_keys', $entity_keys);
+
+  $entity_type->set('revision_table', NULL);
+  $entity_type->set('revision_data_table', NULL);
+
+  $entity_type->set('revision_metadata_keys', NULL);
+
+  foreach ($field_storage_definitions as $field_storage_definition) {
+    $field_storage_definition->setRevisionable(FALSE);
+  }
+
+  // @fixme Add batch processing.
+  $definition_update_manager->updateFieldableEntityType($entity_type, $field_storage_definitions, $sandbox);
 }
