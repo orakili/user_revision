@@ -4,3 +4,8 @@ services:
     arguments: ['@entity_type.manager']
     tags:
       - { name: access_check, applies_to: _access_user_revision }
+  user_revision_uninstall_validator:
+    class: Drupal\user_revision\Extension\UserRevisionUninstallValidator
+    arguments: ['@string_translation']
+    tags:
+      - { name: module_install.uninstall_validator }

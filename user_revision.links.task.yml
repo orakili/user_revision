@@ -1,5 +1,5 @@
-entity.user.version_history:
-  route_name: entity.user.version_history
+entity.user.revisions:
+  route_name: entity.user.revisions
   base_route: entity.user.canonical
   title: 'Revisions'
   weight: 20

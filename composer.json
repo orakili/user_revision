@@ -1,0 +1,14 @@
+{
+  "name": "drupal/user_revision",
+  "description": "Adds revision support to user entities.",
+  "type": "drupal-module",
+  "homepage": "https://www.drupal.org/project/user_revision",
+  "license": "GPL-2.0+",
+  "support": {
+    "issues": "https://www.drupal.org/project/issues/user_revision",
+    "source": "https://git.drupal.org/project/user_revision.git"
+  },
+  "require": {
+    "drupal/core": "^9 || ^10"
+  }
+}
