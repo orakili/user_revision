@@ -1,8 +1,7 @@
 name: 'User revision'
 type: module
-description: 'Provides revision support for users.'
-version: VERSION
-core: 8.x
+description: 'Provides revision support for user entities.'
 package: User
+core_version_requirement: ^9 || ^10
 dependencies:
-  - user
+   - drupal:user

@@ -1,4 +1,5 @@
-user_revision_always_enabled: false
-user_revision_default_enabled: true
-user_revision_default_open: true
-user_revision_user_log_enabled: true
+revision_mode: optional
+revision_default_enabled: true
+revision_user_log_enabled: true
+revision_keep_passwords: true
+revision_information_open: true
