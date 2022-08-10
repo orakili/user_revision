@@ -214,6 +214,7 @@ function user_revision_user_update(UserInterface $user) {
       ->update($entity_type->getRevisionDataTable())
       ->fields(['pass' => NULL])
       ->condition($entity_type->getKey('revision'), $user->getRevisionId(), '<')
+      ->condition($entity_type->getKey('id'), $user->id(), '=')
       ->execute();
   }
 }
@@ -447,7 +448,7 @@ function user_revision_form_user_admin_settings_submit($form, FormStateInterface
     UPDATE {$revision_data_table} AS revision_data_table
     INNER JOIN {$base_table} AS base_table
     ON base_table.{$id_field} = revision_data_table.{$id_field}
-    SET base_table.pass = NULL
+    SET revision_data_table.pass = NULL
     WHERE revision_data_table.{$revision_id_field} <> base_table.{$revision_id_field}
   ");
 }
