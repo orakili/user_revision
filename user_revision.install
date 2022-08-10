@@ -15,6 +15,8 @@ function user_revision_install($is_syncing) {
   $file = \Drupal::service('extension.list.module')
     ->getPath('user_revision') . '/user_revision.install';
 
+  $in_batch = !empty(batch_get());
+
   // The schema update to add the revision tables and fields requires migrating
   // the existing data. So we create a batch to update the user entity type and
   // make the user entities revisionable.
@@ -31,9 +33,16 @@ function user_revision_install($is_syncing) {
   // As of 2022/08/05, Drush doesn't run the batch when the module is enabled
   // via a config import so we need to do it manually.
   //
+  // That said, if the config import is part of a site installation (i.e. when
+  // running `drush site-install --existing-config`) then the user_revision
+  // batch operations will be appended to the site installation batch and run
+  // at then end.
+  // So in that type of case where a batch is already running, we should not
+  // call drush_backend_batch_process() to avoid an infinite loop...
+  //
   // @see https://github.com/drush-ops/drush/pull/5106
-  if ($is_syncing && php_sapi_name() === 'cli' && function_exists('drush_backend_batch_process')) {
-    batch_get();
+  // @see install_config_import_batch()
+  if ($is_syncing && !$in_batch && php_sapi_name() === 'cli' && function_exists('drush_backend_batch_process')) {
     drush_backend_batch_process();
   }
 }
